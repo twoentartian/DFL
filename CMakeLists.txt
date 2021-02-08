@@ -14,14 +14,14 @@ elseif(APPLE)
     set(BOOST_ROOT "C:\\lib\\boost_1_75_0")
 elseif(UNIX)
     message(STATUS "Operation system is UNIX")
-    set(BOOST_ROOT "C:\\lib\\boost_1_75_0")
+    set(BOOST_ROOT "/home/tyd/Lib/boost_1_75_0/")
 endif ()
 
 
 # Boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.75.0 COMPONENTS FILESYSTEM)
+find_package(Boost 1.75.0 COMPONENTS filesystem)
 if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
     target_link_libraries(DFL ${Boost_LIBRARIES})
