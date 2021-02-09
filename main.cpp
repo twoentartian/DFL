@@ -4,7 +4,7 @@
 int main()
 {
 	std::cout << "Hello, World!" << std::endl;
-	std::cout << boost::filesystem::exists("C:\\lib");
+	std::cout << boost::filesystem::exists(".");
 	
 	return 0;
 }

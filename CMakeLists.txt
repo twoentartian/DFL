@@ -11,10 +11,10 @@ if (WIN32)
     set(BOOST_ROOT "C:\\lib\\boost_1_75_0")
 elseif(APPLE)
     message(STATUS "Operation system is APPLE")
-    set(BOOST_ROOT "C:\\lib\\boost_1_75_0")
+    set(BOOST_ROOT "./3rd/boost_1_75_0")
 elseif(UNIX)
     message(STATUS "Operation system is UNIX")
-    set(BOOST_ROOT "/home/tyd/Lib/boost_1_75_0/")
+    set(BOOST_ROOT "./3rd/boost_1_75_0")
 endif ()
 
 
