@@ -6,66 +6,52 @@ sudo mv bazel.gpg /etc/apt/trusted.gpg.d/
 echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | sudo tee /etc/apt/sources.list.d/bazel.list
 sudo apt update
 
-sudo apt install -y cmake git gcc g++
-sudo apt install -y autoconf automake libtool curl make g++ unzip  # Protobuf Dependencies
-sudo apt install -y swig bazel bazel-3.1.0 python3-pip python3  # TensorFlow Dependencies
+sudo apt install -y cmake git
+sudo apt install -y autoconf automake libtool curl make gcc g++ unzip  # Protobuf Dependencies
+sudo apt install -y swig bazel-3.1.0 bazel python3-pip python3  # TensorFlow Dependencies
 
 #numpy
-pip3 install numpy
+pip3 install numpy six keras_preprocessing
 
 cd ..
 mkdir "3rd"
 cd "3rd" || exit
-if [ -d "./tensorflow" ]; then
-  git clone https://github.com/tensorflow/tensorflow              # TensorFlow
+
+# protobuf-3.9.2
+PROTOBUF_VERSION=3.9.2
+if [ -d "./protobuf-${PROTOBUF_VERSION}" ]; then
+  echo "protobuf-${PROTOBUF_VERSION} exists"
+else
+  echo "downloading protobuf-${PROTOBUF_VERSION}"
+  wget https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protobuf-all-${PROTOBUF_VERSION}.tar.gz || exit
+  tar xvf protobuf-all-${PROTOBUF_VERSION}.tar.gz || exit
+  rm protobuf-all-${PROTOBUF_VERSION}.tar.gz || exit
+  cd protobuf-${PROTOBUF_VERSION} || exit
+  ./autogen.sh
+  ./configure
+  make
+  sudo make install
+fi
+
+# tensorflow-2.4.0
+if [ ! -d "./tensorflow" ]; then
+  git clone --recursive https://github.com/tensorflow/tensorflow              # TensorFlow
 fi
 cd "tensorflow" || exit
 git checkout v2.4.0
-
-if [ `grep -c "libtensorflow_all.so" tensorflow/BUILD` -eq '0' ]; then
-    if [ "$(uname)" == "Darwin" ]; then
-    printf "# Added build rule
-cc_binary(
-    name = \"libtensorflow_all.so\",
-    linkshared = 1,
-    deps = [
-        \"//tensorflow/core:framework_internal\",
-        \"//tensorflow/core:tensorflow\",
-        \"//tensorflow/cc:cc_ops\",
-        \"//tensorflow/cc:client_session\",
-        \"//tensorflow/cc:scope\",
-        \"//tensorflow/c:c_api\",
-    ],
-) " >> tensorflow/BUILD
-else
-    printf "# Added build rule
-cc_binary(
-    name = \"libtensorflow_all.so\",
-    linkshared = 1,
-    linkopts = [\"-Wl,--version-script=tensorflow/tf_version_script.lds\"], # Remove this line if you are using MacOS
-    deps = [
-        \"//tensorflow/core:framework_internal\",
-        \"//tensorflow/core:tensorflow\",
-        \"//tensorflow/cc:cc_ops\",
-        \"//tensorflow/cc:client_session\",
-        \"//tensorflow/cc:scope\",
-        \"//tensorflow/c:c_api\",
-    ],
-) " >> tensorflow/BUILD
-fi
-fi
 ./configure      # Note that this requires user input
 bazel --version
-bazel build tensorflow:libtensorflow_all.so || exit
-mkdir "out"
-mkdir "out/obj"
-mkdir "out/include"
-sudo cp bazel-bin/tensorflow/libtensorflow_all.so ./out/obj
-sudo cp -r tensorflow ./out/include
-sudo find ./out/include/tensorflow -type f  ! -name "*.h" -delete
-sudo cp bazel-tensorflow/tensorflow/core/framework/*.h  ./out/include/tensorflow/core/framework
-sudo cp bazel-tensorflow/tensorflow/core/kernels/*.h  ./out/include/tensorflow/core/kernels
-sudo cp bazel-tensorflow/tensorflow/core/lib/core/*.h  ./out/include/tensorflow/core/lib/core
-#sudo cp bazel-tensorflow/tensorflow/core/protobuf/*.h  ./out/include/tensorflow/core/protobuf #files not found.
-sudo cp bazel-tensorflow/tensorflow/core/util/*.h  ./out/include/tensorflow/core/util
-sudo cp bazel-tensorflow/tensorflow/cc/ops/*.h  ./out/include/tensorflow/cc/ops
+bazel build --config=opt //tensorflow:libtensorflow_cc.so //tensorflow/tools/pip_package:build_pip_package|| exit
+./bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
+pip3 install /tmp/tensorflow_pkg/tensorflow-2.4.0-cp38-cp38-linux_x86_64.whl
+
+mkdir "build"
+mkdir "build/include"
+mkdir "build/link"
+cp -rf "${HOME}/.local/lib/python3.8/site-packages/tensorflow/include" "./build"
+cp  "./bazel-bin/tensorflow/libtensorflow_cc.so" "./build/link/libtensorflow_cc.so"
+cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2" "./build/link/libtensorflow_cc.so.2"
+cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2.4.0" "./build/link/libtensorflow_cc.so.2.4.0"
+cp  "./bazel-bin/tensorflow/libtensorflow_framework.so" "./build/link/libtensorflow_framework.so"
+cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2" "./build/link/libtensorflow_framework.so.2"
+cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2.4.0" "./build/link/libtensorflow_framework.so.2.4.0"
