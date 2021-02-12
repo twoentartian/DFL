@@ -41,17 +41,20 @@ cd "tensorflow" || exit
 git checkout v2.4.0
 ./configure      # Note that this requires user input
 bazel --version
-bazel build --config=opt //tensorflow:libtensorflow_cc.so //tensorflow/tools/pip_package:build_pip_package|| exit
+bazel build --incompatible_do_not_split_linking_cmdline --config=opt //tensorflow:libtensorflow_cc.so //tensorflow/tools/pip_package:build_pip_package|| exit
 ./bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
 pip3 install /tmp/tensorflow_pkg/tensorflow-2.4.0-cp38-cp38-linux_x86_64.whl
 
 mkdir "build"
 mkdir "build/include"
 mkdir "build/link"
-cp -rf "${HOME}/.local/lib/python3.8/site-packages/tensorflow/include" "./build"
-cp  "./bazel-bin/tensorflow/libtensorflow_cc.so" "./build/link/libtensorflow_cc.so"
-cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2" "./build/link/libtensorflow_cc.so.2"
-cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2.4.0" "./build/link/libtensorflow_cc.so.2.4.0"
-cp  "./bazel-bin/tensorflow/libtensorflow_framework.so" "./build/link/libtensorflow_framework.so"
-cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2" "./build/link/libtensorflow_framework.so.2"
-cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2.4.0" "./build/link/libtensorflow_framework.so.2.4.0"
+sudo cp -rf "${HOME}/.local/lib/python3.8/site-packages/tensorflow/include" "./build"
+#sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so" "./build/link/libtensorflow_cc.so"
+#sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2" "./build/link/libtensorflow_cc.so.2"
+#sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2.4.0" "./build/link/libtensorflow_cc.so.2.4.0"
+#sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so" "./build/link/libtensorflow_framework.so"
+#sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2" "./build/link/libtensorflow_framework.so.2"
+#sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2.4.0" "./build/link/libtensorflow_framework.so.2.4.0"
+
+sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2.4.0" "./build/link/libtensorflow_cc.so"
+sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2.4.0" "./build/link/libtensorflow_framework.so"
