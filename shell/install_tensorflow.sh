@@ -35,7 +35,7 @@ fi
 
 # tensorflow-2.4.0
 if [ ! -d "./tensorflow" ]; then
-  git clone --recursive https://github.com/tensorflow/tensorflow              # TensorFlow
+  git clone --recurse-submodules https://github.com/tensorflow/tensorflow              # TensorFlow
 fi
 cd "tensorflow" || exit
 git checkout v2.4.0
@@ -49,12 +49,16 @@ mkdir "build"
 mkdir "build/include"
 mkdir "build/link"
 sudo cp -rf "${HOME}/.local/lib/python3.8/site-packages/tensorflow/include" "./build"
-#sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so" "./build/link/libtensorflow_cc.so"
-#sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2" "./build/link/libtensorflow_cc.so.2"
-#sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2.4.0" "./build/link/libtensorflow_cc.so.2.4.0"
-#sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so" "./build/link/libtensorflow_framework.so"
-#sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2" "./build/link/libtensorflow_framework.so.2"
-#sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2.4.0" "./build/link/libtensorflow_framework.so.2.4.0"
+sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so" "./build/link/libtensorflow_cc.so"
+sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2" "./build/link/libtensorflow_cc.so.2"
+sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2.4.0" "./build/link/libtensorflow_cc.so.2.4.0"
+sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so" "./build/link/libtensorflow_framework.so"
+sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2" "./build/link/libtensorflow_framework.so.2"
+sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2.4.0" "./build/link/libtensorflow_framework.so.2.4.0"
 
-sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2.4.0" "./build/link/libtensorflow_cc.so"
-sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2.4.0" "./build/link/libtensorflow_framework.so"
+#sudo cp  "./bazel-bin/tensorflow/libtensorflow_cc.so.2.4.0" "./build/link/libtensorflow_cc.so"
+#sudo cp  "./bazel-bin/tensorflow/libtensorflow_framework.so.2.4.0" "./build/link/libtensorflow_framework.so"
+#sudo ln -s "./build/link/libtensorflow_cc.so" "./build/link/libtensorflow_cc.so.2"
+#sudo ln -s "./build/link/libtensorflow_cc.so" "./build/link/libtensorflow_cc.so.2.4.0"
+#sudo ln -s "./build/link/libtensorflow_framework.so" "./build/link/libtensorflow_framework.so.2"
+#sudo ln -s "./build/link/libtensorflow_framework.so" "./build/link/libtensorflow_framework.so.2.4.0"

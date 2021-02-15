@@ -30,9 +30,12 @@ else()
 endif()
 
 # TensorFlow
-set(TENSORFLOW_HOME 3rd/tensorflow)
-include_directories(${TENSORFLOW_HOME}/build/include)
-link_directories(${TENSORFLOW_HOME}/build/link)
-set(TENSORFLOW_LIB libtensorflow_cc.so libtensorflow_framework.so libprotobuf.so)
+#set(TENSORFLOW_HOME 3rd/tensorflow)
+#include_directories(${TENSORFLOW_HOME}/build/include)
+#link_directories(${TENSORFLOW_HOME}/build/link)
+#set(TENSORFLOW_LIB libtensorflow_cc.so libtensorflow_framework.so libprotobuf.so)
+
+# Caffe
+
 
 add_subdirectory(tests)

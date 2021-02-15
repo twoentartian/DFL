@@ -21,7 +21,7 @@ using tensorflow::int32;
 
 namespace tensorflow {
 	namespace example {
-
+		
 		struct Options {
 			int num_concurrent_sessions = 1;   // The number of concurrent sessions
 			int num_concurrent_steps = 10;     // The number of concurrent steps
@@ -37,37 +37,37 @@ namespace tensorflow {
 			// computation.  Maybe turn this into an mnist model instead?
 			Scope root = Scope::NewRootScope();
 			using namespace ::tensorflow::ops;  // NOLINT(build/namespaces)
-
+			
 			// A = [3 2; -1 0].  Using Const<float> means the result will be a
 			// float tensor even though the initializer has integers.
 			auto a = Const<float>(root, {{3, 2}, {-1, 0}});
-
+			
 			// x = [1.0; 1.0]
 			auto x = Const(root.WithOpName("x"), {{1.f}, {1.f}});
-
+			
 			// y = A * x
 			auto y = MatMul(root.WithOpName("y"), a, x);
-
+			
 			// y2 = y.^2
 			auto y2 = Square(root, y);
-
+			
 			// y2_sum = sum(y2).  Note that you can pass constants directly as
 			// inputs.  Sum() will automatically create a Const node to hold the
 			// 0 value.
 			auto y2_sum = Sum(root, y2, 0);
-
+			
 			// y_norm = sqrt(y2_sum)
 			auto y_norm = Sqrt(root, y2_sum);
-
+			
 			// y_normalized = y ./ y_norm
 			Div(root.WithOpName("y_normalized"), y, y_norm);
-
+			
 			GraphDef def;
 			TF_CHECK_OK(root.ToGraphDef(&def));
-
+			
 			return def;
 		}
-
+		
 		string DebugString(const Tensor& x, const Tensor& y) {
 			CHECK_EQ(x.NumElements(), 2);
 			CHECK_EQ(y.NumElements(), 2);
@@ -80,7 +80,7 @@ namespace tensorflow {
 			return strings::Printf("lambda = %8.6f x = [%8.6f %8.6f] y = [%8.6f %8.6f]",
 			                       lambda(), x_flat(0), x_flat(1), y_flat(0), y_flat(1));
 		}
-
+		
 		void ConcurrentSteps(const Options* opts, int session_index) {
 			// Creates a session.
 			SessionOptions options;
@@ -89,14 +89,14 @@ namespace tensorflow {
 			if (options.target.empty()) {
 				graph::SetDefaultDevice(opts->use_gpu ? "/device:GPU:0" : "/cpu:0", &def);
 			}
-
+			
 			TF_CHECK_OK(session->Create(def));
-
+			
 			// Spawn M threads for M concurrent steps.
 			const int M = opts->num_concurrent_steps;
 			std::unique_ptr<thread::ThreadPool> step_threads(
 					new thread::ThreadPool(Env::Default(), "trainer", M));
-
+			
 			for (int step = 0; step < M; ++step) {
 				step_threads->Schedule([&session, opts, session_index, step]() {
 					// Randomly initialize the input.
@@ -106,7 +106,7 @@ namespace tensorflow {
 					Eigen::Tensor<float, 0, Eigen::RowMajor> inv_norm =
 							x_flat.square().sum().sqrt().inverse();
 					x_flat = x_flat * inv_norm();
-
+					
 					// Iterations.
 					std::vector<Tensor> outputs;
 					for (int iter = 0; iter < opts->num_iterations; ++iter) {
@@ -114,7 +114,7 @@ namespace tensorflow {
 						TF_CHECK_OK(
 								session->Run({{"x", x}}, {"y:0", "y_normalized:0"}, {}, &outputs));
 						CHECK_EQ(size_t{2}, outputs.size());
-
+						
 						const Tensor& y = outputs[0];
 						const Tensor& y_norm = outputs[1];
 						// Print out lambda, x, and y.
@@ -125,41 +125,41 @@ namespace tensorflow {
 					}
 				});
 			}
-
+			
 			// Delete the threadpool, thus waiting for all threads to complete.
 			step_threads.reset(nullptr);
 			TF_CHECK_OK(session->Close());
 		}
-
+		
 		void ConcurrentSessions(const Options& opts) {
 			// Spawn N threads for N concurrent sessions.
 			const int N = opts.num_concurrent_sessions;
-
+			
 			// At the moment our Session implementation only allows
 			// one concurrently computing Session on GPU.
 			CHECK_EQ(1, N) << "Currently can only have one concurrent session.";
-
+			
 			thread::ThreadPool session_threads(Env::Default(), "trainer", N);
 			for (int i = 0; i < N; ++i) {
 				session_threads.Schedule(std::bind(&ConcurrentSteps, &opts, i));
 			}
 		}
-
+		
 	}  // end namespace example
 }  // end namespace tensorflow
 
 namespace {
-
+	
 	bool ParseInt32Flag(tensorflow::StringPiece arg, tensorflow::StringPiece flag,
 	                    int32* dst) {
 		if (absl::ConsumePrefix(&arg, flag) && absl::ConsumePrefix(&arg, "=")) {
 			char extra;
 			return (sscanf(arg.data(), "%d%c", dst, &extra) == 1);
 		}
-
+		
 		return false;
 	}
-
+	
 	bool ParseBoolFlag(tensorflow::StringPiece arg, tensorflow::StringPiece flag,
 	                   bool* dst) {
 		if (absl::ConsumePrefix(&arg, flag)) {
@@ -167,7 +167,7 @@ namespace {
 				*dst = true;
 				return true;
 			}
-
+			
 			if (arg == "=true") {
 				*dst = true;
 				return true;
@@ -176,10 +176,10 @@ namespace {
 				return true;
 			}
 		}
-
+		
 		return false;
 	}
-
+	
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -193,7 +193,7 @@ int main(int argc, char* argv[]) {
 			}
 			break;
 		}
-
+		
 		if (ParseInt32Flag(argv[i], "--num_concurrent_sessions",
 		                   &opts.num_concurrent_sessions) ||
 		    ParseInt32Flag(argv[i], "--num_concurrent_steps",
@@ -202,11 +202,11 @@ int main(int argc, char* argv[]) {
 		    ParseBoolFlag(argv[i], "--use_gpu", &opts.use_gpu)) {
 			continue;
 		}
-
+		
 		fprintf(stderr, "Unknown flag: %s\n", argv[i]);
 		return -1;
 	}
-
+	
 	// Passthrough any unknown flags.
 	int dst = 1;  // Skip argv[0]
 	for (char* f : unknown_flags) {
@@ -217,22 +217,3 @@ int main(int argc, char* argv[]) {
 	tensorflow::port::InitMain(argv[0], &argc, &argv);
 	tensorflow::example::ConcurrentSessions(opts);
 }
-
-//#include <tensorflow/core/platform/env.h>
-//#include <tensorflow/core/public/session.h>
-//#include <iostream>
-//
-//using namespace std;
-//using namespace tensorflow;
-//
-//int main()
-//{
-//	Session* session;
-//	Status status = NewSession(SessionOptions(), &session);
-//	if (!status.ok()) {
-//		cout << status.ToString() << "\n";
-//		return 1;
-//	}
-//	cout << "Session successfully created.\n";
-//	return 0;
-//}
