@@ -1,1 +1,2 @@
 add_subdirectory(tensorflow_startup)
+add_subdirectory(caffe_startup)

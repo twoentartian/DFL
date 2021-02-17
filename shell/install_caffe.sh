@@ -26,24 +26,34 @@ sudo ldconfig
 cd ..
 
 # OpenCV
-#wget https://github.com/opencv/opencv/archive/2.4.13.5.zip -O opencv-2.4.13.5.zip
-#unzip opencv-2.4.13.5.zip
-#cd opencv-2.4.13.5 ||exit
-#mkdir release
-#cd release ||exit
-#cmake -G "Unix Makefiles" -DCMAKE_CXX_COMPILER=/usr/bin/g++ CMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_INSTALL_PREFIX=/usr/local -DWITH_TBB=ON -DBUILD_NEW_PYTHON_SUPPORT=ON -DWITH_V4L=ON -DINSTALL_C_EXAMPLES=ON -DINSTALL_PYTHON_EXAMPLES=ON -DBUILD_EXAMPLES=ON -DWITH_QT=ON -DWITH_OPENGL=ON -DBUILD_FAT_JAVA_LIB=ON -DINSTALL_TO_MANGLED_PATHS=ON -DINSTALL_CREATE_DISTRIB=ON -DINSTALL_TESTS=ON -DENABLE_FAST_MATH=ON -DWITH_IMAGEIO=ON -DBUILD_SHARED_LIBS=OFF -DWITH_GSTREAMER=ON ..
-#make all -j"$(nproc)" # Uses all machine cores
-#sudo make install
-#cd ../../
-#rm -rf ./opencv-2.4.13.5
-#echo -e "OpenCV version:"
-#pkg-config --modversion opencv
+if [ ! -d "./opencv" ]; then
+  git clone https://github.com/opencv/opencv
+fi
+cd opencv ||exit
+git checkout 3.4
+mkdir build
+cd build ||exit
+cmake ..
+sudo make install -j"$(nproc)"
+cd ../..
+
+# levelDB
+sudo apt install -y libleveldb-dev libsnappy-dev
+
+# lmdb
+sudo apt install -y liblmdb-dev
 
 # other dependencies
 sudo apt install -y libgoogle-glog-dev libgflags-dev libgflags-dev libhdf5-dev
 
 # caffe
-git clone git@github.com:BVLC/caffe.git
+if [ ! -d "./caffe" ]; then
+  git clone git@github.com:BVLC/caffe.git
+fi
 cd caffe ||exit
 cp ../../shell/caffe_config/Makefile.config .
 make all -j"$(nproc)"
+make install
+protoc src/caffe/proto/caffe.proto --cpp_out=.
+mkdir include/caffe/proto
+mv src/caffe/proto/caffe.pb.h include/caffe/proto

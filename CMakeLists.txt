@@ -3,6 +3,8 @@ project(DFL)
 
 set(CMAKE_CXX_STANDARD 17)
 
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
 add_executable(DFL main.cpp)
 
 # OS
@@ -17,7 +19,6 @@ elseif(UNIX)
     set(BOOST_ROOT "./3rd/boost_1_75_0")
 endif ()
 
-
 # Boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
@@ -29,6 +30,26 @@ else()
     message(FATAL_ERROR "Boost not found")
 endif()
 
+# find glog
+find_package(GLOG REQUIRED)
+
+# find protobuf
+find_package(Protobuf REQUIRED)
+
+# find levelDB
+find_package(LevelDB REQUIRED)
+
+# find snappy
+find_package(Snappy REQUIRED)
+
+# find LMDB
+find_package(LMDB REQUIRED)
+
+# find OpenCV
+find_package(OpenCV REQUIRED)
+
+list(APPEND Caffe_libs "${CAFFE_LIB}" "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")
+
 # TensorFlow
 #set(TENSORFLOW_HOME 3rd/tensorflow)
 #include_directories(${TENSORFLOW_HOME}/build/include)
@@ -36,6 +57,9 @@ endif()
 #set(TENSORFLOW_LIB libtensorflow_cc.so libtensorflow_framework.so libprotobuf.so)
 
 # Caffe
-
+set(CAFFE_HOME 3rd/caffe)
+include_directories(${CAFFE_HOME}/include)
+link_directories(${CAFFE_HOME}/build/lib)
+set(CAFFE_LIB libcaffe.so)
 
 add_subdirectory(tests)
