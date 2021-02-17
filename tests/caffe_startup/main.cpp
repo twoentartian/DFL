@@ -277,7 +277,7 @@ int lenet_5_mnist_test()
 	const std::string image_path{ "E:/GitCode/Caffe_Test/test_data/images/handwritten_digits/" };
 #else
 	const std::string param_file{ "../../../dataset/MNIST/lenet_test.prototxt" };
-	const std::string trained_filename{ "../../../dataset/MNIST/result_iter_1000.caffemodel" };
+	const std::string trained_filename{ "../../../dataset/MNIST/result/snap_iter_2000.caffemodel" };
 	const std::string image_path{ "../../../dataset/MNIST/handwritten_digits/" };
 #endif
 	
@@ -356,9 +356,7 @@ int lenet_5_mnist_test()
 
 int main(int argc, char *argv[])
 {
-	::google::InitGoogleLogging(argv[0]);
-	
-	lenet_5_mnist_train();
+	//lenet_5_mnist_train();
 	int ret = lenet_5_mnist_test();
 	
 	if (0 == ret) fprintf(stdout, "========== test success ==========\n");
