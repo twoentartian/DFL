@@ -20,3 +20,5 @@ fi
 cd boost_${BOOST_VERSION} || exit
 ./bootstrap.sh
 ./b2
+
+sudo ./b2 install

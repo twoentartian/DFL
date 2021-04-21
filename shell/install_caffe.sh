@@ -2,6 +2,7 @@
 
 cd ..
 mkdir "3rd"
+sudo chmod 777 ./3rd
 cd "3rd" || exit
 
 # boost
@@ -19,6 +20,7 @@ git clone https://github.com/google/protobuf.git
 cd protobuf || exit
 git submodule update --init --recursive
 ./autogen.sh
+./configure
 make
 make check
 sudo make install

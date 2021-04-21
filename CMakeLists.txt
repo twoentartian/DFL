@@ -7,6 +7,17 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 add_executable(DFL main.cpp)
 
+# Caffe manual
+#set(CAFFE_HOME 3rd/caffe)
+#include_directories(${CAFFE_HOME}/include)
+#link_directories(${CAFFE_HOME}/build/lib)
+#set(Caffe_LIBRARIES libcaffe.so)
+
+# Caffe cmake
+add_subdirectory(3rd/caffe)
+set(CAFFE_HOME 3rd/caffe)
+include_directories(${CAFFE_HOME}/include)
+
 # OS
 if (WIN32)
     message(STATUS "Operation system is WIN32")
@@ -22,7 +33,7 @@ endif ()
 # Boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.75.0 COMPONENTS filesystem)
+find_package(Boost 1.71.0 REQUIRED COMPONENTS filesystem)
 if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
     target_link_libraries(DFL ${Boost_LIBRARIES})
@@ -55,11 +66,5 @@ list(APPEND Caffe_libs "${CAFFE_LIB}" "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" 
 #include_directories(${TENSORFLOW_HOME}/build/include)
 #link_directories(${TENSORFLOW_HOME}/build/link)
 #set(TENSORFLOW_LIB libtensorflow_cc.so libtensorflow_framework.so libprotobuf.so)
-
-# Caffe
-set(CAFFE_HOME 3rd/caffe)
-include_directories(${CAFFE_HOME}/include)
-link_directories(${CAFFE_HOME}/build/lib)
-set(CAFFE_LIB libcaffe.so)
 
 add_subdirectory(tests)

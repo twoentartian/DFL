@@ -105,7 +105,6 @@ static void convert_dataset(const char* image_filename, const char* label_filena
 		LOG(INFO) << "Opening lmdb " << db_path;
 		boost::filesystem::create_directory(db_path);
 		
-		// 创建lmdb数据库
 		CHECK_EQ(mdb_env_create(&mdb_env), MDB_SUCCESS) << "mdb_env_create failed";
 		//CHECK_EQ(mdb_env_set_mapsize(mdb_env, 1099511627776), MDB_SUCCESS) << "mdb_env_set_mapsize failed";//1TB
 		CHECK_EQ(mdb_env_set_mapsize(mdb_env, 107374182), MDB_SUCCESS) << "mdb_env_set_mapsize failed";//100MB
@@ -125,13 +124,13 @@ static void convert_dataset(const char* image_filename, const char* label_filena
 	char key_cstr[kMaxKeyLength];
 	std::string value;
 	
-	caffe::Datum datum; // Caffe数据类
+	caffe::Datum datum;
 	datum.set_channels(1);
 	datum.set_height(rows);
 	datum.set_width(cols);
 	LOG(INFO) << "A total of " << num_items << " items.";
 	LOG(INFO) << "Rows: " << rows << " Cols: " << cols;
-	// 将数据写入lmdb或leveldb数据库
+
 	for (int item_id = 0; item_id < num_items; ++item_id) {
 		image_file.read(pixels, rows * cols);
 		label_file.read(&label, 1);
@@ -203,32 +202,14 @@ static void convert_dataset(const char* image_filename, const char* label_filena
 // mnist convert to lmdb or leveldb
 int mnist_convert()
 {
-	// Blog: http://blog.csdn.net/fengbingchun/article/details/49794453
-	//mnist test images
-	//FLAGS_minloglevel = 2; // Fix: WARNING: Logging before InitGoogleLogging() is written to STDERR
-#ifdef _MSC_VER
-	const std::string argv_test[] {"E:/GitCode/Caffe_Test/test_data/MNIST/t10k-images.idx3-ubyte",
-		"E:/GitCode/Caffe_Test/test_data/MNIST/t10k-labels.idx1-ubyte",
-		"E:\\GitCode\\Caffe_Test\\test_data\\MNIST\\test"};
-#else
 	const std::string argv_test[] {"../../../dataset/MNIST/t10k-images.idx3-ubyte",
 	                               "../../../dataset/MNIST/t10k-labels.idx1-ubyte",
 	                               "../../../dataset/MNIST/test-lmdb"};
-#endif
-	//mnist train images
-#ifdef _MSC_VER
-	const std::string argv_train[] { "E:/GitCode/Caffe_Test/test_data/MNIST/train-images.idx3-ubyte",
-		"E:/GitCode/Caffe_Test/test_data/MNIST/train-labels.idx1-ubyte",
-		"E:\\GitCode\\Caffe_Test\\test_data\\MNIST\\train" };
-#else
 	const std::string argv_train[] { "../../../dataset/MNIST/train-images.idx3-ubyte",
 	                                 "../../../dataset/MNIST/train-labels.idx1-ubyte",
 	                                 "../../../dataset/MNIST/train-lmdb" };
-#endif
-	
 	convert_dataset(argv_train[0].c_str(), argv_train[1].c_str(), argv_train[2].c_str(), "lmdb");
 	convert_dataset(argv_test[0].c_str(), argv_test[1].c_str(), argv_test[2].c_str(), "lmdb");
-	
 	fprintf(stderr, "mnist convert finish\n");
 	return 0;
 }
@@ -321,7 +302,6 @@ int lenet_5_mnist_test()
 			cv::cvtColor(mat, mat, CV_BGR2BGRA);
 		
 		cv::resize(mat, mat, cv::Size(image_width_data_layer, image_height_data_layer));
-		cv::bitwise_not(mat, mat);
 		
 		boost::shared_ptr<caffe::MemoryDataLayer<float> > memory_data_layer =
 				boost::static_pointer_cast<caffe::MemoryDataLayer<float>>(caffe_net.layer_by_name("data"));
@@ -356,7 +336,7 @@ int lenet_5_mnist_test()
 
 int main(int argc, char *argv[])
 {
-	//lenet_5_mnist_train();
+	lenet_5_mnist_train();
 	int ret = lenet_5_mnist_test();
 	
 	if (0 == ret) fprintf(stdout, "========== test success ==========\n");
