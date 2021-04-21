@@ -2,6 +2,8 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=clion,visualstudio,visualstudiocode,clion+all
 
 3rd/*
+dataset/MNIST/result
+dataset/MNIST/test-lmdb
 
 ### CLion ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
@@ -534,3 +536,4 @@ MigrationBackup/
 .ionide/
 
 # End of https://www.toptal.com/developers/gitignore/api/clion,visualstudio,visualstudiocode,clion+all
+/dataset/MNIST/result/
