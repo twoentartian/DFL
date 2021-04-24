@@ -1,2 +1,3 @@
 add_subdirectory(tensorflow_startup)
 add_subdirectory(caffe_startup)
+add_subdirectory(ml_abs_test)

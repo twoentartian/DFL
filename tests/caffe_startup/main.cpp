@@ -257,7 +257,8 @@ int lenet_5_mnist_test()
 	const std::string trained_filename{ "E:/GitCode/Caffe_Test/test_data/Net/lenet-5_mnist_iter_10000.caffemodel" };
 	const std::string image_path{ "E:/GitCode/Caffe_Test/test_data/images/handwritten_digits/" };
 #else
-	const std::string param_file{ "../../../dataset/MNIST/lenet_test.prototxt" };
+	//const std::string param_file{ "../../../dataset/MNIST/lenet_test.prototxt" };
+	const std::string param_file{ "../../../dataset/MNIST/lenet_train.prototxt" };
 	const std::string trained_filename{ "../../../dataset/MNIST/result/snap_iter_2000.caffemodel" };
 	const std::string image_path{ "../../../dataset/MNIST/handwritten_digits/" };
 #endif
@@ -337,10 +338,11 @@ int lenet_5_mnist_test()
 int main(int argc, char *argv[])
 {
 	lenet_5_mnist_train();
-	int ret = lenet_5_mnist_test();
 	
-	if (0 == ret) fprintf(stdout, "========== test success ==========\n");
-	else fprintf(stderr, "########## test fail ##########\n");
+//	int ret = lenet_5_mnist_test();
+//
+//	if (0 == ret) fprintf(stdout, "========== test success ==========\n");
+//	else fprintf(stderr, "########## test fail ##########\n");
 	
 	return 0;
 }
