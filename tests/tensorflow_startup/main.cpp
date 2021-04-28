@@ -154,7 +154,7 @@ namespace {
 	                    int32* dst) {
 		if (absl::ConsumePrefix(&arg, flag) && absl::ConsumePrefix(&arg, "=")) {
 			char extra;
-			return (sscanf(arg.data(), "%d%c", dst, &extra) == 1);
+			return (sscanf(arg._data(), "%d%c", dst, &extra) == 1);
 		}
 		
 		return false;

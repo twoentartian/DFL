@@ -279,7 +279,7 @@ int lenet_5_mnist_test()
 			require_blob_index = i;
 	}
 	if (require_blob_index == -1) {
-		fprintf(stderr, "ouput blob don't match\n");
+		fprintf(stderr, "ouput blob don'DType match\n");
 		return -1;
 	}
 	

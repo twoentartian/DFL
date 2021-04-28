@@ -33,7 +33,7 @@ endif ()
 # Boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.71.0 REQUIRED COMPONENTS filesystem)
+find_package(Boost 1.71.0 REQUIRED COMPONENTS system filesystem serialization unit_test_framework)
 if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
     target_link_libraries(DFL ${Boost_LIBRARIES})
