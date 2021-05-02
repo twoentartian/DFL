@@ -11,9 +11,9 @@ namespace crypto
 	{
 	public:
 		constexpr static int OutputSize = 256; //bits
-		
 		std::string digest(const std::string& message) override
 		{
+
 		
 		}
 		
