@@ -7,14 +7,11 @@ layer {
   include {
     phase: TRAIN
   }
-  transform_param {
-    scale: 0.00390625
-  }
   memory_data_param {
     batch_size: 64
-    channels:1
-    height:28
-    width:28
+    channels: 1
+    height: 28
+    width: 28
   }
 }
 layer {
@@ -25,14 +22,11 @@ layer {
   include {
     phase: TEST
   }
-  transform_param {
-    scale: 0.00390625
-  }
   memory_data_param {
-    batch_size:100
-    channels:1
-    height:28
-    width:28
+    batch_size: 100
+    channels: 1
+    height: 28
+    width: 28
   }
 }
 layer {

@@ -55,7 +55,6 @@ static uint32_t swap_endian(uint32_t val)
 static void convert_dataset(const char* image_filename, const char* label_filename, const char* db_path, const std::string& db_backend)
 {
 	// Open files
-
 	std::ifstream image_file(image_filename, std::ios::in | std::ios::binary);
 	std::ifstream label_file(label_filename, std::ios::in | std::ios::binary);
 	CHECK(image_file) << "Unable to open file " << image_filename;
@@ -135,8 +134,9 @@ static void convert_dataset(const char* image_filename, const char* label_filena
 	datum.set_width(cols);
 	LOG(INFO) << "A total of " << num_items << " items.";
 	LOG(INFO) << "Rows: " << rows << " Cols: " << cols;
-
-	for (int item_id = 0; item_id < num_items; ++item_id) {
+	
+	static int static_counter = 0;
+	for (int item_id = 100*static_counter; item_id < 100*(static_counter + 1); ++item_id) {
 		image_file.read(pixels, rows * cols);
 		label_file.read(&label, 1);
 		datum.set_data(pixels, rows*cols);
@@ -168,7 +168,7 @@ static void convert_dataset(const char* image_filename, const char* label_filena
 			LOG(FATAL) << "Unknown db backend " << db_backend;
 		}
 		
-		if (++count % 1000 == 0) {
+		if (++count % 100 == 0) {
 			// Commit txn
 			if (db_backend == "leveldb") {  // leveldb
 				db->Write(leveldb::WriteOptions(), batch);
@@ -184,35 +184,21 @@ static void convert_dataset(const char* image_filename, const char* label_filena
 			}
 		}
 	}
-	// write the last batch
-	if (count % 1000 != 0) {
-		if (db_backend == "leveldb") {  // leveldb
-			db->Write(leveldb::WriteOptions(), batch);
-			delete batch;
-			delete db;
-		}
-		else if (db_backend == "lmdb") {  // lmdb
-			CHECK_EQ(mdb_txn_commit(mdb_txn), MDB_SUCCESS) << "mdb_txn_commit failed";
-			mdb_close(mdb_env, mdb_dbi);
-			mdb_env_close(mdb_env);
-		}
-		else {
-			LOG(FATAL) << "Unknown db backend " << db_backend;
-		}
-		LOG(ERROR) << "Processed " << count << " files.";
-	}
+	static_counter ++;
 	delete[] pixels;
 }
+
+
+const std::string argv_test[] {"../../../dataset/MNIST/t10k-images.idx3-ubyte",
+                               "../../../dataset/MNIST/t10k-labels.idx1-ubyte",
+                               "../../../dataset/MNIST/test-lmdb"};
+const std::string argv_train[] { "../../../dataset/MNIST/train-images.idx3-ubyte",
+                                 "../../../dataset/MNIST/train-labels.idx1-ubyte",
+                                 "../../../dataset/MNIST/train-lmdb" };
 
 // mnist convert to lmdb or leveldb
 int mnist_convert()
 {
-	const std::string argv_test[] {"../../../dataset/MNIST/t10k-images.idx3-ubyte",
-	                               "../../../dataset/MNIST/t10k-labels.idx1-ubyte",
-	                               "../../../dataset/MNIST/test-lmdb"};
-	const std::string argv_train[] { "../../../dataset/MNIST/train-images.idx3-ubyte",
-	                                 "../../../dataset/MNIST/train-labels.idx1-ubyte",
-	                                 "../../../dataset/MNIST/train-lmdb" };
 	convert_dataset(argv_train[0].c_str(), argv_train[1].c_str(), argv_train[2].c_str(), "lmdb");
 	convert_dataset(argv_test[0].c_str(), argv_test[1].c_str(), argv_test[2].c_str(), "lmdb");
 	fprintf(stderr, "mnist convert finish\n");
@@ -239,115 +225,27 @@ int lenet_5_mnist_train()
 		return -1;
 	}
 	
-	mnist_convert(); // convert MNIST to LMDB
-	
+	boost::filesystem::remove_all(argv_train[2].c_str());
+	boost::filesystem::remove_all(argv_test[2].c_str());
+	mnist_convert();
+	int max_imum_counter = 0;
 	caffe::SGDSolver<float> solver(solver_param);
-	solver.Solve();
+	
+	while (max_imum_counter++ < 10)
+	{
+		mnist_convert(); // convert MNIST to LMDB
+		solver.Step(1);
+	}
 	
 	fprintf(stdout, "train finish\n");
 	
 	return 0;
 }
 
-int lenet_5_mnist_test()
-{
-#ifdef CPU_ONLY
-	caffe::Caffe::set_mode(caffe::Caffe::CPU);
-#else
-	caffe::Caffe::set_mode(caffe::Caffe::GPU);
-#endif
-
-#ifdef _MSC_VER
-	const std::string param_file{ "E:/GitCode/Caffe_Test/test_data/Net/lenet-5_mnist_windows_test.prototxt" };
-	const std::string trained_filename{ "E:/GitCode/Caffe_Test/test_data/Net/lenet-5_mnist_iter_10000.caffemodel" };
-	const std::string image_path{ "E:/GitCode/Caffe_Test/test_data/images/handwritten_digits/" };
-#else
-	//const std::string param_file{ "../../../dataset/MNIST/lenet_test.prototxt" };
-	const std::string param_file{ "../../../dataset/MNIST/lenet_train.prototxt" };
-	const std::string trained_filename{ "../../../dataset/MNIST/result/snap_iter_2000.caffemodel" };
-	const std::string image_path{ "../../../dataset/MNIST/handwritten_digits/" };
-#endif
-	
-	caffe::Net<float> caffe_net(param_file, caffe::TEST);
-	caffe_net.CopyTrainedLayersFrom(trained_filename);
-	
-	const boost::shared_ptr<caffe::Blob<float> > blob_data_layer = caffe_net.blob_by_name("data");
-	int image_channel_data_layer = blob_data_layer->channels();
-	int image_height_data_layer = blob_data_layer->height();
-	int image_width_data_layer = blob_data_layer->width();
-	
-	const std::vector<caffe::Blob<float>*> output_blobs = caffe_net.output_blobs();
-	int require_blob_index{ -1 };
-	const int digit_category_num{ 10 };
-	for (int i = 0; i < output_blobs.size(); ++i) {
-		if (output_blobs[i]->count() == digit_category_num)
-			require_blob_index = i;
-	}
-	if (require_blob_index == -1) {
-		fprintf(stderr, "ouput blob don'DType match\n");
-		return -1;
-	}
-	
-	std::vector<int> target{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-	std::vector<int> result;
-	
-	for (auto num : target) {
-		std::string str = std::to_string(num);
-		str += ".png";
-		str = image_path + str;
-		
-		cv::Mat mat = cv::imread(str.c_str(), 1);
-		if (!mat.data) {
-			fprintf(stderr, "load image error: %s\n", str.c_str());
-			return -1;
-		}
-		
-		if (image_channel_data_layer == 1)
-			cv::cvtColor(mat, mat, CV_BGR2GRAY);
-		else if (image_channel_data_layer == 4)
-			cv::cvtColor(mat, mat, CV_BGR2BGRA);
-		
-		cv::resize(mat, mat, cv::Size(image_width_data_layer, image_height_data_layer));
-		
-		boost::shared_ptr<caffe::MemoryDataLayer<float> > memory_data_layer =
-				boost::static_pointer_cast<caffe::MemoryDataLayer<float>>(caffe_net.layer_by_name("data"));
-		mat.convertTo(mat, CV_32FC1, 0.00390625);
-		float dummy_label[1] {0};
-		memory_data_layer->Reset((float*)(mat.data), dummy_label, 1);
-		
-		float loss{ 0.0 };
-		const std::vector<caffe::Blob<float>*>& results = caffe_net.ForwardPrefilled(&loss);
-		const float* output = results[require_blob_index]->cpu_data();
-		
-		float tmp{ -1 };
-		int pos{ -1 };
-		
-		for (int j = 0; j < 10; j++) {
-			//fprintf(stdout, "Probability to be Number %d is: %.3f\n", j, output[j]);
-			if (tmp < output[j]) {
-				pos = j;
-				tmp = output[j];
-			}
-		}
-		
-		result.push_back(pos);
-	}
-	
-	for (auto i = 0; i < 10; i++)
-		fprintf(stdout, "actual digit is: %d, result digit is: %d\n", target[i], result[i]);
-	
-	fprintf(stdout, "predict finish\n");
-	return 0;
-}
-
+//This test is expected to fail
 int main(int argc, char *argv[])
 {
 	lenet_5_mnist_train();
-	
-//	int ret = lenet_5_mnist_test();
-//
-//	if (0 == ret) fprintf(stdout, "========== test success ==========\n");
-//	else fprintf(stderr, "########## test fail ##########\n");
 	
 	return 0;
 }

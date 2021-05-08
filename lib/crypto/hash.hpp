@@ -10,4 +10,6 @@ namespace crypto
 		virtual std::string digest(const std::string& message) = 0;
 		
 	};
+	
+	//sha256 md5 ecc
 }

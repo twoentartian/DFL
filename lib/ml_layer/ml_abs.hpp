@@ -41,7 +41,7 @@ namespace Ml
         virtual void train(/*TODO*/) = 0;
 
         virtual void evaluation() = 0;
-
+        
         virtual std::string get_network_structure_info() = 0;
 
         virtual model_type get_model_type()
