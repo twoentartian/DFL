@@ -5,9 +5,6 @@ mkdir "3rd"
 sudo chmod 777 ./3rd
 cd "3rd" || exit
 
-# boost
-sudo apt-get install -y libboost-all-dev
-
 # openBLS
 #sudo apt-get install -y libopenblas-dev
 
@@ -55,7 +52,7 @@ fi
 cd caffe ||exit
 cp ../../shell/caffe_config/Makefile.config .
 make all -j"$(nproc)"
-make install
+
 protoc src/caffe/proto/caffe.proto --cpp_out=.
 mkdir include/caffe/proto
 mv src/caffe/proto/caffe.pb.h include/caffe/proto
