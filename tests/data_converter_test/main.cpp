@@ -10,8 +10,9 @@
 #include <ml_layer/caffe.hpp>
 #include <caffe/sgd_solvers.hpp>
 
-int main()
-{
+
+int main() {
+
 
      caffe::Caffe::set_mode(caffe::Caffe::CPU);
 //    Ml::MlCaffeModel<float> model1;
@@ -38,6 +39,8 @@ int main()
     auto train_label =train.get_label();
     auto test_data = test.get_data();
     auto test_label=test.get_label();
+
+
 
 
 

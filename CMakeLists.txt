@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-add_executable(DFL main.cpp)
+add_executable(DFL main.cpp lib/crypto/md5.hpp)
 
 # Caffe manual
 #set(CAFFE_HOME 3rd/caffe)
