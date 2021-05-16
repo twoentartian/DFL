@@ -15,7 +15,7 @@
 #include <ml_layer/ml_abs.hpp>
 
 #include <util.hpp>
-#include <tensor_blob_like.hpp>
+#include "tensor_blob_like.hpp"
 
 namespace Ml
 {

@@ -7,6 +7,9 @@ layer {
   include {
     phase: TRAIN
   }
+  transform_param {
+      scale: 0.00390625
+  }
   memory_data_param {
     batch_size: 64
     channels: 1

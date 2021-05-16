@@ -12,11 +12,12 @@
 
 #include "./ml_abs.hpp"
 #include "./caffe_model_parameters.hpp"
+#include "./caffe_solver_ext.hpp"
 #include "../exception.hpp"
 
 namespace Ml
 {
-	template <typename DType>
+	template <typename DType, template <typename> class SolverType>
 	class MlCaffeModel : MlModel
 	{
 	public:
@@ -90,7 +91,6 @@ namespace Ml
 			net_parameter.toNet(*(_caffe_solver->net()));
 		}
 		
-		template <template <typename> class SolverType>
 		void load_caffe_model(const std::string& proto_file_path)
 		{
 			caffe::SolverParameter solver_param;
@@ -98,7 +98,8 @@ namespace Ml
 			{
 				throw std::logic_error("parse caffe model fail");
 			}
-			_caffe_solver.reset(new SolverType<DType>(solver_param));
+			//_caffe_solver.reset(new SolverType<DType>(solver_param));
+			_caffe_solver.reset(new Ml::caffe_solver_ext<float, SolverType>(solver_param));
 		}
 		
 		void train() override
@@ -170,6 +171,7 @@ namespace Ml
 			return net;
 		}
 		
-		boost::shared_ptr<caffe::Solver<DType>> _caffe_solver;
+		//boost::shared_ptr<caffe::Solver<DType>> _caffe_solver;
+		boost::shared_ptr<Ml::caffe_solver_ext<DType, SolverType>> _caffe_solver;
 	};
 }

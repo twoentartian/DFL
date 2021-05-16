@@ -8,7 +8,7 @@
 #include <fstream>
 #include <glog/logging.h>
 
-#include "./tensor_blob_like.hpp"
+#include "ml_layer/tensor_blob_like.hpp"
 #include "../exception.hpp"
 #include "../util.hpp"
 
