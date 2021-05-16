@@ -218,7 +218,7 @@ int main()
 	Ml::caffe_solver_ext<float, caffe::SGDSolver> model1("../../../dataset/MNIST/lenet_solver_memory.prototxt");
 	assert(model1.checkValidFirstLayer_memoryLayer());
 	
-	for (int repeat = 0; repeat < 3; ++repeat)
+	for (int repeat = 0; repeat < 5; ++repeat)
 	{
 		model1.TrainDataset(data_blob, label_blob);
 		auto results = model1.TestDataset(test_data_blob, test_label_blob);
