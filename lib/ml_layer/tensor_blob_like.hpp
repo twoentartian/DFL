@@ -2,17 +2,24 @@
 #ifndef C_TENSOR_BLOB_LIKE_H
 #define C_TENSOR_BLOB_LIKE_H
 
+#include <sstream>
 #include <boost/serialization/access.hpp>
 #include <caffe/data_transformer.hpp>
+#include <boost/container_hash/hash.hpp>
+#include <boost/functional/hash.hpp>
 #include "./util.hpp"
 
 namespace Ml {
-
+	class tensor_blob_like_abs
+	{
+	public:
+		tensor_blob_like_abs() = default;
+	};
+	
     template<typename DType>
-    class tensor_blob_like {
+    class tensor_blob_like : public tensor_blob_like_abs {
     public:
         tensor_blob_like() = default;
-
 
         void fromBlob(const caffe::Blob <DType> &blob) {
             //shape
@@ -40,49 +47,60 @@ namespace Ml {
             std::memcpy(data_vec, _data.data(), _data.size() * sizeof(DType));
         }
 
-
-        void fromDatum(const caffe::Datum &datum){
-            //_empty = datum.has_data();
-            caffe::Blob<DType>* transformed_blob;
-            caffe::DataTransformer<DType> transformer;
-            transformer.Transform(datum,transformed_blob);
-            fromBlob(transformed_blob);
-
-        }
-        void toDatum(caffe::Datum &datum,bool reshape,bool label){
-            std::vector<int> datum_shape;
-            datum_shape[0] = (datum.has_data())?datum.data().size():0;
-            datum_shape[1] = (datum.has_channels()) ? datum.channels() : 0;
-            datum_shape[2] = (datum.has_height()) ? datum.height() : 0;
-            datum_shape[3] = (datum.has_width()) ? datum.width() : 0;
-
-            if (reshape){
-                datum.set_channels(_shape[1]);
-                datum.set_height(_shape[2]);
-                datum.set_width(_shape[3]);
-
-            }else{
-                if(datum_shape!=_shape){
-                    throw std::runtime_error("datum shape does not match");
-                }
-
-            }
-
-            if (label){
-                datum.set_label(_data.data(),_data.size());
-            }
-            else{
-                datum.set_data(_data.data(),_data.size());
-            }
-
-        }
-
-
         template<class Archive>
         void serialize(Archive &ar, const unsigned int version) {
             ar & _shape;
             ar & _data;
         }
+        
+        bool operator == (const tensor_blob_like& target) const
+        {
+	        return (target._shape == this->_shape) && (target._data == this->_data);
+        }
+	
+	    bool operator != (const tensor_blob_like& target) const
+	    {
+		    return !(*this == target);
+	    }
+	
+	    tensor_blob_like<DType> operator+(const tensor_blob_like<DType>& target) const
+	    {
+		    tensor_blob_like<DType> output = *this;
+		    if(target._shape != this->_shape)
+		    {
+			    throw std::invalid_argument("tensor/blob shape mismatch");
+		    }
+		    for(int i = 0; i < output._data.size(); i++)
+		    {
+			    output._data[i] += target._data[i];
+		    }
+		    return output;
+	    }
+	
+	    tensor_blob_like<DType> operator-(const tensor_blob_like<DType>& target) const
+	    {
+		    tensor_blob_like<DType> output = *this;
+		    if(target._shape != this->_shape)
+		    {
+			    throw std::invalid_argument("tensor/blob shape mismatch");
+		    }
+		    for(int i = 0; i < output._data.size(); i++)
+		    {
+			    output._data[i] -= target._data[i];
+		    }
+		    return output;
+	    }
+	
+	    template<typename D>
+	    tensor_blob_like<DType> operator/(const D& target) const
+	    {
+		    tensor_blob_like<DType> output = *this;
+		    for(int i = 0; i < output._data.size(); i++)
+		    {
+			    output._data[i] /= target;
+		    }
+		    return output;
+	    }
 
         bool empty() {
             return _data.empty();
@@ -92,11 +110,32 @@ namespace Ml {
         );
         GENERATE_GET(_data, getData
         );
+	    
+        void swap(tensor_blob_like& target)
+        {
+	        this->_data.swap(target._data);
+	        this->_shape.swap(target._shape);
+        }
+        
+        std::string get_hash_str() const
+	    {
+			std::stringstream output;
+		    for (auto&& shape: _shape)
+		    {
+			    output << std::to_string(shape);
+		    }
+		    for (auto&& data: _data)
+		    {
+			    output << std::to_string(data);
+		    }
+		    return output.str();
+	    }
+     
     private:
         friend class boost::serialization::access;
 
         std::vector<int> _shape;
-        std::vector <DType> _data;
+        std::vector<DType> _data;
     };
 
 }

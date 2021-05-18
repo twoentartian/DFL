@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <glog/logging.h>
 
 #include <boost/shared_ptr.hpp>
@@ -9,6 +10,7 @@
 #include <caffe/common.hpp>
 
 #include "tensor_blob_like.hpp"
+#include <debug_tool.hpp>
 
 namespace Ml
 {
@@ -67,7 +69,6 @@ namespace Ml
 			std::vector<tensor_blob_like<DType>> iter_data,iter_label;
 			iter_data.resize(batch_size);iter_label.resize(batch_size);
 			
-			
 			int average_loss = this->param_.average_loss();
 			this->losses_.clear();
 			this->smoothed_loss_ = 0;
@@ -78,15 +79,21 @@ namespace Ml
 				//fill MemoryDataLayer
 				iter_data.clear();
 				iter_label.clear();
-				int remain_size = data.size() - current_train_index;
-				int iters = std::min(remain_size, batch_size);
-				for (int i = 0; i < iters; i++)
+				iter_data.reserve(batch_size);
+				iter_label.reserve(batch_size);
+				for (int i = 0; i < batch_size; i++)
 				{
 					iter_data.push_back(data[current_train_index]);
 					iter_label.push_back(label[current_train_index]);
 					current_train_index++;
 				}
 				auto datums = ConvertTensorBlobLikeToDatum(iter_data,iter_label);
+				
+//				for(auto&& datum: datums)
+//				{
+//					debug_tool::print_mnist_datum(datum);
+//				}
+				
 				first_layer->AddDatumVector(datums);
 				
 				TrainDataset_Step(1, average_loss, display);
@@ -121,7 +128,7 @@ namespace Ml
 				
 				auto datums = ConvertTensorBlobLikeToDatum(data,label);
 				first_layer->AddDatumVector(datums);
-				output.push_back(TestDataset_Step(test_nets_index));
+				output.push_back(TestDataset_SingleNet(test_nets_index));
 			}
 			return output;
 		}
@@ -194,7 +201,7 @@ namespace Ml
 		}
 		
 		//return: {accuracy,loss}
-		std::tuple<DType,DType> TestDataset_Step(const int test_net_id)
+		std::tuple<DType,DType> TestDataset_SingleNet(const int test_net_id)
 		{
 			DType output_accuracy,output_loss;
 			CHECK(caffe::Caffe::root_solver());
@@ -274,23 +281,26 @@ namespace Ml
 		{
 			std::vector<caffe::Datum> output;
 			output.resize(data.size());
-			DType temp_label;
+			char temp_label;
 			const auto& shape = data[0].getShape();
 			const int& single_sample_length = data[0].getData().size();
-			DType* temp_pixels = new DType[single_sample_length];
+			std::vector<char> temp_pixels;
+			temp_pixels.resize(single_sample_length);
+			for (int item_id = 0; item_id < data.size(); ++item_id)
 			{
-				for (int item_id = 0; item_id < data.size(); ++item_id)
+				output[item_id].set_channels(shape[0]);
+				output[item_id].set_height(shape[1]);
+				output[item_id].set_width(shape[2]);
+				
+				for(int i = 0; i < single_sample_length; i++)
 				{
-					output[item_id].set_channels(shape[0]);
-					output[item_id].set_height(shape[1]);
-					output[item_id].set_width(shape[2]);
-					std::memcpy(temp_pixels,data[item_id].getData().data(), sizeof(DType) * data[item_id].getData().size());
-					std::memcpy(&temp_label,label[item_id].getData().data(), sizeof(DType) * label[item_id].getData().size());
-					output[item_id].set_data(temp_pixels, single_sample_length);
-					output[item_id].set_label(temp_label);
+					temp_pixels[i] = rint(data[item_id].getData()[i]);
 				}
+				temp_label = rint(label[item_id].getData()[0]);
+				output[item_id].set_data(temp_pixels.data(), single_sample_length);
+				output[item_id].set_label(temp_label);
 			}
-			delete[] temp_pixels;
+			
 			return std::move(output);
 		}
 		

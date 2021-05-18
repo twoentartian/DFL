@@ -13,6 +13,7 @@
 #include <ml_layer/ml_abs.hpp>
 #include <ml_layer/caffe.hpp>
 #include <ml_layer/tensor_blob_like.hpp>
+#include <ml_layer/fed_avg_buffer.hpp>
 
 BOOST_AUTO_TEST_SUITE (ml_caffe_test)
 
@@ -96,6 +97,46 @@ BOOST_AUTO_TEST_CASE (serialization)
 		break;
 	}
 	BOOST_CHECK(pass);
+}
+
+BOOST_AUTO_TEST_CASE (net_parameter_add_divide)
+{
+	Ml::MlCaffeModel<float, caffe::SGDSolver> model1;
+	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver.prototxt");
+	Ml::caffe_parameter_net<float> parameter = model1.get_parameter();
+	auto parameterx2 = parameter + parameter;
+	auto parameterx3 = parameter + parameterx2;
+	auto parameterx4 = parameterx2 + parameterx2;
+	auto parameter1 = parameterx2 / 2;
+	auto parameter2 = parameterx3 / 3;
+	auto parameter3 = parameterx4 / 4;
+	BOOST_CHECK(parameter == parameter1);
+	//BOOST_CHECK(parameter == parameter2);
+	BOOST_CHECK(parameter == parameter3);
+}
+
+BOOST_AUTO_TEST_CASE (fed_avg_buffer)
+{
+	Ml::MlCaffeModel<float, caffe::SGDSolver> model1;
+	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver.prototxt");
+	Ml::caffe_parameter_net<float> parameter = model1.get_parameter();
+	
+	Ml::fed_avg_buffer<Ml::caffe_parameter_net<float>, 6> parameter_buffer;
+	parameter_buffer.write(parameter);
+	parameter_buffer.write(parameter);
+	auto parameter0 = parameter_buffer.average();
+	parameter_buffer.write(parameter);
+	parameter_buffer.write(parameter);
+	auto parameter1 = parameter_buffer.average();
+	parameter_buffer.write(parameter);
+	parameter_buffer.write(parameter);
+	parameter_buffer.write(parameter);
+	parameter_buffer.write(parameter);
+	auto parameter2 = parameter_buffer.average();
+	
+	BOOST_CHECK(parameter == parameter0);
+	BOOST_CHECK(parameter == parameter1);
+	BOOST_CHECK(parameter != parameter2);
 }
 
 static uint32_t swap_endian(uint32_t val)

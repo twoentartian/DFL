@@ -49,7 +49,7 @@
 
 #include <ml_layer.hpp>
 #include <data_convert.hpp>
-
+#include <ml_layer/fed_avg_buffer.hpp>
 #include <util.hpp>
 
 // random data
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 	constexpr int TEST_ITER = 100;
 	constexpr int TEST_BATCH_SIZE = 100;
 	
-	const std::string solver_path = "../../../dataset/MNIST/lenet_solver_memory.prototxt";
+	const std::string solver_path = "../../../dataset/MNIST/lenet_solver_fed_avg.prototxt";
 	
 	const std::string train_dataset_path = "../../../dataset/MNIST/train-images.idx3-ubyte";
 	const std::string train_label_dataset_path = "../../../dataset/MNIST/train-labels.idx1-ubyte";
@@ -77,8 +77,9 @@ int main(int argc, char *argv[])
 	Ml::data_converter<float> test_dataset;
 	test_dataset.load_dataset_mnist(test_dataset_path,test_label_dataset_path);
 	
+	Ml::fed_avg_buffer<Ml::caffe_parameter_net<float>, 5> parameter_buffers;
+	
 	Ml::MlCaffeModel<float, caffe::SGDSolver> models[NUMBER_NODES];
-	Ml::caffe_parameter_net<float> parameters[NUMBER_NODES];
 	for(int i = 0; i < NUMBER_NODES; i++)
 	{
 		models[i].load_caffe_model(solver_path);
@@ -99,7 +100,13 @@ int main(int argc, char *argv[])
 			std::vector<Ml::tensor_blob_like<float>> train_label = util::vector_concatenate(train_label_0, train_label_1);
 			util::vector_twin_shuffle(train_data,train_label);
 			
+			//get the model from the fed avg
+			auto temp_model = parameter_buffers.average();
+			models[node_index].set_parameter(temp_model);
+			
+			//train
 			models[node_index].train(train_data,train_label);
+			temp_model = models[node_index].get_parameter();
 			
 			//test
 			if (iter % TEST_ITER == 0)
@@ -109,31 +116,9 @@ int main(int argc, char *argv[])
 				std::cout << boost::format("iter: %1% node:%2% accuracy: %3%") % models[node_index].get_iter() % node_index % accuracy << std::endl;
 			}
 			
-			//average
-			parameters[node_index] = models[node_index].get_parameter();
-			for (int apply_index = 0; apply_index < NUMBER_NODES; ++apply_index)
-			{
-				if (apply_index == node_index)
-				{
-					continue;
-				}
-				
-				parameters[apply_index] = models[apply_index].get_parameter();
-				for (int layer_index = 0; layer_index < parameters[node_index].getLayers().size(); ++layer_index)
-				{
-					if (parameters[node_index].getLayers()[layer_index].getBlob_p()->empty())
-					{
-						continue;
-					}
-					auto& data1 = parameters[node_index].getLayers()[layer_index].getBlob_p()->getData();
-					auto& data2 = parameters[apply_index].getLayers()[layer_index].getBlob_p()->getData();
-					for (int data_index = 0; data_index < data1.size(); ++data_index)
-					{
-						data2[data_index] = (data1[data_index] + data2[data_index])/2;
-					}
-					models[apply_index].set_parameter(parameters[apply_index]);
-				}
-			}
+			//fed average
+			//fed avg will put all results into a single buffer.
+			parameter_buffers.write(temp_model);
 		}
 		
 		iter ++;

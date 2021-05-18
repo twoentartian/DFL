@@ -50,25 +50,22 @@
 #include <ml_layer.hpp>
 #include <data_convert.hpp>
 
-#include <util.hpp>
-
 // random data
 // merge model: average
 int main(int argc, char *argv[])
 {
-	google::InitGoogleLogging(argv[0]);
-	
 	constexpr int NUMBER_NODES = 5;
-	constexpr int MAX_ITER = 1000;
+	constexpr int NUMBER_MALICIOUS_NODE = 4;
+	constexpr int MAX_ITER = 60;
 	constexpr int TRAIN_BATCH_SIZE = 64; //this must a multiple of batch_size, it will be divided into many smaller batch automatically
-	constexpr int TEST_ITER = 100;
+	constexpr int TEST_ITER = 5;
 	constexpr int TEST_BATCH_SIZE = 100;
 	
-	const std::string solver_path = "../../../dataset/MNIST/lenet_solver_memory.prototxt";
+	google::InitGoogleLogging(argv[0]);
 	
+	const std::string solver_path = "../../../dataset/MNIST/lenet_solver_memory.prototxt";
 	const std::string train_dataset_path = "../../../dataset/MNIST/train-images.idx3-ubyte";
 	const std::string train_label_dataset_path = "../../../dataset/MNIST/train-labels.idx1-ubyte";
-	
 	const std::string test_dataset_path = "../../../dataset/MNIST/t10k-images.idx3-ubyte";
 	const std::string test_label_dataset_path = "../../../dataset/MNIST/t10k-labels.idx1-ubyte";
 	
@@ -89,15 +86,26 @@ int main(int argc, char *argv[])
 	{
 		for (int node_index = 0; node_index < NUMBER_NODES; ++node_index)
 		{
-			Ml::tensor_blob_like<float> label;
-			label.getShape() = {1};
-			label.getData() = {float (node_index*2)};
-			auto [train_data_0, train_label_0] = train_dataset.get_random_data_by_Label(label, TRAIN_BATCH_SIZE/2);
-			label.getData() = {float (node_index*2+1)};
-			auto [train_data_1, train_label_1] = train_dataset.get_random_data_by_Label(label, TRAIN_BATCH_SIZE/2);
-			std::vector<Ml::tensor_blob_like<float>> train_data = util::vector_concatenate(train_data_0, train_data_1);
-			std::vector<Ml::tensor_blob_like<float>> train_label = util::vector_concatenate(train_label_0, train_label_1);
-			util::vector_twin_shuffle(train_data,train_label);
+			auto [train_data, train_label] = train_dataset.get_random_data(TRAIN_BATCH_SIZE);
+			
+			//malicious node: modify the label
+			if (node_index < NUMBER_MALICIOUS_NODE)
+			{
+				for (int i = 0; i < train_label.size(); ++i)
+				{
+					std::random_device dev;
+					std::mt19937 rng(dev());
+					std::uniform_int_distribution<int> distribution(1,9);
+					
+					auto& data = train_label[i].getData()[0];
+					data += distribution(rng);
+					if (data > 10)
+					{
+						data -= 10;
+					}
+					data = float (rint(data));
+				}
+			}
 			
 			models[node_index].train(train_data,train_label);
 			

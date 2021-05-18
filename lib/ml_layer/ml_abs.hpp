@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sstream>
-
+#include "tensor_blob_like.hpp"
 
 namespace Ml
 {
@@ -30,17 +30,18 @@ namespace Ml
 
         model_serialization_unknown
     };
-
+    
+    template <typename DType>
     class MlModel
     {
     public:
         virtual std::stringstream serialization(serialization_type type) = 0;
 
         virtual void deserialization(serialization_type type, std::stringstream & ss) = 0;
-
-        virtual void train(/*TODO*/) = 0;
-
-        virtual void evaluation() = 0;
+        
+        virtual void train(const std::vector<tensor_blob_like<DType>>& data, const std::vector<tensor_blob_like<DType>>& label, bool display = true) = 0;
+        
+        virtual DType evaluation(const std::vector<tensor_blob_like<DType>>& data, const std::vector<tensor_blob_like<DType>>& label) = 0;
         
         virtual std::string get_network_structure_info() = 0;
 
@@ -48,6 +49,8 @@ namespace Ml
         {
             return model_type::model_type_not_set;
         }
+        
+        virtual int get_iter() = 0;
 
     private:
         model_type type;

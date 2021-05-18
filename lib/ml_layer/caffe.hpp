@@ -18,7 +18,7 @@
 namespace Ml
 {
 	template <typename DType, template <typename> class SolverType>
-	class MlCaffeModel : MlModel
+	class MlCaffeModel : public MlModel<DType>
 	{
 	public:
 		std::stringstream serialization(serialization_type type) override
@@ -102,14 +102,22 @@ namespace Ml
 			_caffe_solver.reset(new Ml::caffe_solver_ext<float, SolverType>(solver_param));
 		}
 		
-		void train() override
+		void train(const std::vector<tensor_blob_like<DType>>& data, const std::vector<tensor_blob_like<DType>>& label, bool display = true) override
 		{
-		
+			_caffe_solver->TrainDataset(data, label, display);
 		}
 		
-		void evaluation() override
+		DType evaluation(const std::vector<tensor_blob_like<DType>>& data, const std::vector<tensor_blob_like<DType>>& label) override
 		{
-		
+			std::vector<std::tuple<DType,DType>> results = _caffe_solver->TestDataset(data, label);
+			DType output_accuracy = 0;
+			for (int i = 0; i < results.size(); ++i)
+			{
+				DType accuracy, loss;
+				std::tie(accuracy, loss) = results[i];
+				output_accuracy += accuracy;
+			}
+			return output_accuracy / results.size();
 		}
 		
 		std::string get_network_structure_info() override
@@ -154,6 +162,11 @@ namespace Ml
 		void set_parameter(caffe_parameter_net<DType>& parameter)
 		{
 			parameter.toNet(*getNet());
+		}
+		
+		int get_iter() override
+		{
+			return _caffe_solver->iter();
 		}
 		
 	private:

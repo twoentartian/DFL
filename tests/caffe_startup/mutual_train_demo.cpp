@@ -38,7 +38,7 @@
 #include <caffe/util/upgrade_proto.hpp>
 #include <caffe/layers/pooling_layer.hpp>
 #include <caffe/net.hpp>
-#include "caffe/proto/caffe.pb.h"
+#include <caffe/proto/caffe.pb.h>
 #include <caffe/solver.hpp>
 #include <caffe/sgd_solvers.hpp>
 #include <caffe/layers/memory_data_layer.hpp>
@@ -186,11 +186,11 @@ int lenet_5_mnist_train()
 	constexpr int MODEL_COUNT = 4;
 	constexpr int iteration = 300;
 	
-	Ml::MlCaffeModel<float> models[MODEL_COUNT];
+	Ml::MlCaffeModel<float, caffe::SGDSolver> models[MODEL_COUNT];
 	Ml::caffe_parameter_net<float> parameters[MODEL_COUNT];
 	for (int i = 0; i < MODEL_COUNT; ++i)
 	{
-		models[i].load_caffe_model<caffe::SGDSolver>(filename);
+		models[i].load_caffe_model(filename);
 	}
 	
 	for (int i = 0; i < MODEL_COUNT; ++i)

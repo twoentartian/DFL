@@ -5,6 +5,9 @@ target_link_libraries(TEST_Caffe_Startup caffe caffeproto "${GLOG_LIBRARY}" "${P
 add_executable(TEST_Caffe_lmdb_append test_lmdb_append.cpp)
 target_link_libraries(TEST_Caffe_lmdb_append caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")
 
+add_executable(TEST_Caffe_single_train_demo single_train_demo.cpp)
+target_link_libraries(TEST_Caffe_single_train_demo caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")
+
 add_executable(TEST_Caffe_mutual_train_demo mutual_train_demo.cpp)
 target_link_libraries(TEST_Caffe_mutual_train_demo caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")
 
@@ -13,3 +16,9 @@ target_link_libraries(TEST_Caffe_mutual_train_random_test caffe caffeproto "${GL
 
 add_executable(TEST_Caffe_mutual_train_non_iid mutual_train_demo_non_iid.cpp)
 target_link_libraries(TEST_Caffe_mutual_train_non_iid caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")
+
+add_executable(TEST_Caffe_mutual_train_non_iid_fedavg mutual_train_demo_non_iid_fedavg.cpp)
+target_link_libraries(TEST_Caffe_mutual_train_non_iid_fedavg caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")
+
+add_executable(TEST_Caffe_mutual_train_malicious_node mutual_train_demo_malicious_node.cpp)
+target_link_libraries(TEST_Caffe_mutual_train_malicious_node caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")

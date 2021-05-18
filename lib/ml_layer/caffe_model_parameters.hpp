@@ -83,6 +83,41 @@ namespace Ml
             ar & _type;
             ar & _blob_p;
         }
+	
+	    caffe_parameter_layer<DType> operator+(const caffe_parameter_layer<DType>& target) const
+	    {
+		    caffe_parameter_layer<DType> output = *this;
+		    output._blob_p.reset(new tensor_blob_like<DType>());
+		    *output._blob_p = *(this->_blob_p) + *target._blob_p;
+		    return output;
+	    }
+	
+	    caffe_parameter_layer<DType> operator-(const caffe_parameter_layer<DType>& target) const
+	    {
+		    caffe_parameter_layer<DType> output = *this;
+		    output._blob_p.reset(new tensor_blob_like<DType>());
+		    *output._blob_p = *(this->_blob_p) - *target._blob_p;
+		    return output;
+	    }
+	
+	    template<typename D>
+	    caffe_parameter_layer<DType> operator/(const D& target) const
+	    {
+		    caffe_parameter_layer<DType> output = *this;
+		    output._blob_p.reset(new tensor_blob_like<DType>());
+		    *output._blob_p = *(this->_blob_p) / target;
+		    return output;
+	    }
+	
+	    bool operator==(const caffe_parameter_layer<DType>& target) const
+	    {
+		    return *(this->_blob_p) == *(target._blob_p);
+	    }
+	
+	    bool operator!=(const caffe_parameter_layer<DType>& target) const
+	    {
+		    return !(*this==target);
+	    }
 
         GENERATE_GET(_name, getName);
         GENERATE_GET(_type, getType);
@@ -137,6 +172,52 @@ namespace Ml
             ar & _name;
             ar & _layers;
         }
+	
+	    caffe_parameter_net<DType> operator+(const caffe_parameter_net<DType>& target) const
+	    {
+		    caffe_parameter_net<DType> output = *this;
+		    for (int i = 0; i < output._layers.size(); ++i)
+		    {
+			    output._layers[i] = output._layers[i] + target._layers[i];
+		    }
+		    return output;
+	    }
+	
+	    caffe_parameter_net<DType> operator-(const caffe_parameter_net<DType>& target) const
+	    {
+		    caffe_parameter_net<DType> output = *this;
+		    for (int i = 0; i < output._layers.size(); ++i)
+		    {
+			    output._layers[i] = output._layers[i] - target._layers[i];
+		    }
+		    return output;
+	    }
+	
+	    template<typename D>
+	    caffe_parameter_net<DType> operator/(const D& target) const
+	    {
+		    caffe_parameter_net<DType> output = *this;
+		    for (int i = 0; i < output._layers.size(); ++i)
+		    {
+			    output._layers[i] = output._layers[i] / target;
+		    }
+		    return output;
+	    }
+	
+	    bool operator==(const caffe_parameter_net<DType>& target) const
+	    {
+		    if(target._layers.size() != this->_layers.size()) return false;
+		    for (int i = 0; i < target._layers.size(); ++i)
+		    {
+			    if(target._layers[i] != this->_layers[i]) return false;
+		    }
+		    return true;
+	    }
+	
+	    bool operator!=(const caffe_parameter_net<DType>& target) const
+	    {
+        	return !(*this==target);
+	    }
 
         GENERATE_GET(_name, getName);
         GENERATE_GET(_layers, getLayers);
