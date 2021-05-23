@@ -1,5 +1,7 @@
 #include <crypto/sha256.hpp>
 #include <crypto/md5.hpp>
+#include <crypto/ecc.hpp>
+#include <crypto/ecdsa.hpp>
 #include <iostream>
 #include <glog/logging.h>
 #include <string>
@@ -26,5 +28,13 @@ int main()
     std::string answer3= "8ddb53d8edaf2e25694a5d8abb852cd1";
     CHECK_EQ(output3, answer3) << "pass faild.";
 
-    return 0;
+
+    crypto::ecdsa<int64_t>ecdsa_test(49363, 8633, 15941, 49697, 38138, 47385);
+    ecdsa_test.keygen();
+    ecdsa_test.signatureGen(12345);
+    auto test = ecdsa_test.verification(12345);
+    CHECK_EQ(test,true);
+	return 0;
+
+
 }
