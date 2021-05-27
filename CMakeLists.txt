@@ -14,9 +14,14 @@ add_executable(DFL main.cpp)
 #set(Caffe_LIBRARIES libcaffe.so)
 
 # Caffe cmake
-add_subdirectory(3rd/caffe)
 set(CAFFE_HOME 3rd/caffe)
+add_subdirectory(${CAFFE_HOME})
 include_directories(${CAFFE_HOME}/include)
+
+# Nlohmann Json
+set(JSON_HOME 3rd/json)
+add_subdirectory(${JSON_HOME})
+include_directories(${JSON_HOME}/include)
 
 # OS
 if (WIN32)

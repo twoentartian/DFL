@@ -48,7 +48,7 @@
 #include <caffe/util/format.hpp>
 
 #include <ml_layer.hpp>
-#include <data_convert.hpp>
+#include <ml_layer/data_convert.hpp>
 
 #include <util.hpp>
 

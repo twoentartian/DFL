@@ -26,11 +26,18 @@ namespace crypto
 			data_str = ConvertHexToText(data, size);
 		}
 		
-		hex_data(const char* data, size_t size) : hex_data(reinterpret_cast<const uint8_t*>(data), size){}
+		template<typename T>
+		hex_data(const T* data, size_t size) : hex_data(reinterpret_cast<const uint8_t*>(data), size)
+		{
+			static_assert(sizeof(T) == 1);
+			
+		}
 		
-		hex_data(const std::vector<uint8_t>& memory_data) : hex_data(memory_data.data(), memory_data.size()){}
-		
-		hex_data(const std::vector<char>& memory_data) : hex_data(memory_data.data(), memory_data.size()){}
+		template<typename T>
+		hex_data(const std::vector<T>& memory_data) : hex_data(memory_data.data(), memory_data.size())
+		{
+			static_assert(sizeof(T) == 1);
+		}
 		
 		GENERATE_GET(data_str, getTextStr_uppercase);
 		GENERATE_GET(data_memory, getHexMemory);

@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <glog/logging.h>
 
-#include "ml_layer/tensor_blob_like.hpp"
+#include "tensor_blob_like.hpp"
 #include "exception.hpp"
 #include "util.hpp"
 

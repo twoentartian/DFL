@@ -164,3 +164,14 @@ namespace crypto
     };
 
 }
+
+#undef SHA2_SHFR
+#undef SHA2_ROTR
+#undef SHA2_CH
+#undef SHA2_MAJ
+#undef SHA256_F1
+#undef SHA256_F2
+#undef SHA256_F3
+#undef SHA256_F4
+#undef SHA2_UNPACK32
+#undef SHA2_PACK32
