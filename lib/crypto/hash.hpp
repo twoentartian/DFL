@@ -16,6 +16,4 @@ namespace crypto
 		virtual hex_data digest(const std::string& message) = 0;
 		
 	};
-	
-	//sha256 md5 ecc
 }
