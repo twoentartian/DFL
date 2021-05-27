@@ -1,8 +1,11 @@
 #pragma once
-#include<stdio.h>
-#include <string.h>
+#include<cstdio>
+#include <cstring>
 #include <string>
-#include <stdint.h>
+#include <cstdint>
+
+#include "./hex_data.hpp"
+
 namespace crypto
 {
 	class Hash
@@ -10,7 +13,7 @@ namespace crypto
 	public:
 		constexpr static int OutputSize = 0;
 		
-		virtual std::string digest(const std::string& message) = 0;
+		virtual hex_data digest(const std::string& message) = 0;
 		
 	};
 	
