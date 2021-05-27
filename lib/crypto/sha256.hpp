@@ -2,6 +2,11 @@
 
 #include "./hash.hpp"
 #include "./hex_data.hpp"
+#include "./crypto_config.hpp"
+#if USE_OPENSSL
+#include <openssl/evp.h>
+#include <openssl/sha.h>
+#endif
 
 #define SHA2_SHFR(x, n)	(x >> n)
 #define SHA2_ROTR(x, n)   ((x >> n) | (x << ((sizeof(x) << 3) - n)))
@@ -148,8 +153,8 @@ namespace crypto
 		}
     
     public:
-        constexpr static int OutputSize = 256;
-	    static const uint32_t DIGEST_SIZE = (OutputSize/8);//bits
+        constexpr static int OUTPUT_SIZE = 256;
+		constexpr static int DIGEST_SIZE = (OUTPUT_SIZE / 8);//bits
 	    
         hex_data digest(const std::string &message) override
         {
@@ -161,6 +166,16 @@ namespace crypto
             return hex_data(digest, DIGEST_SIZE);
         }
 
+#if USE_OPENSSL
+		hex_data digest_openssl(const std::string& message) override
+		{
+			std::string hash;
+			hash.resize(DIGEST_SIZE);
+			SHA256((const unsigned char *)message.c_str(), message.size(), (unsigned char *)hash.c_str());
+			hex_data output(hash.c_str(), DIGEST_SIZE);
+			return output;
+		}
+#endif
     };
 
 }

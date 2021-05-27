@@ -65,10 +65,9 @@ find_package(LMDB REQUIRED)
 # find OpenCV
 find_package(OpenCV REQUIRED)
 
+# OpenSSL
 find_package(OpenSSL REQUIRED)
-
 include_directories(${OPENSSL_INCLUDE_DIR})
-target_link_libraries(DFL ${OPENSSL_CRYPTO_LIBRARY})
 
 list(APPEND Caffe_libs "${CAFFE_LIB}" "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")
 

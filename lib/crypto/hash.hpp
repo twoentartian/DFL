@@ -4,7 +4,9 @@
 #include <string>
 #include <cstdint>
 
+#include "./crypto_config.hpp"
 #include "./hex_data.hpp"
+#include <exception.hpp>
 
 namespace crypto
 {
@@ -14,6 +16,12 @@ namespace crypto
 		constexpr static int OutputSize = 0;
 		
 		virtual hex_data digest(const std::string& message) = 0;
-		
+
+#if USE_OPENSSL
+		virtual hex_data digest_openssl(const std::string& message)
+		{
+			THROW_NOT_IMPLEMENTED;
+		}
+#endif
 	};
 }

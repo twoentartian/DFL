@@ -4,7 +4,6 @@
 
 #pragma once
 
-
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/obj_mac.h>
@@ -14,7 +13,6 @@
 // use secp256k1 elliptic curve
 #define EC_CURVE NID_secp256k1
 
-using namespace std;
 namespace crypto {
     class ecdsa_openssl {
     public:
@@ -35,12 +33,10 @@ namespace crypto {
             pub_ = (BIGNUM *) EC_KEY_get0_public_key(ec_key);
             prv = BN_bn2hex(prv_);
             pub = BN_bn2hex(pub_);
-
         }
         const char *load_private_key()
         {
             return prv;
-
         }
 
         const char *load_public_key()
@@ -48,7 +44,7 @@ namespace crypto {
             return pub;
         }
 
-        const string get_hash()
+        const std::string& get_hash()
         {
             return digest_;
         }
@@ -57,15 +53,15 @@ namespace crypto {
         {
             ECDSA_SIG *signature;
             unsigned char *der_copy;
-            signature = ECDSA_do_sign(reinterpret_cast<const unsigned char *>(&digest_), get_hash().size(), ec_key);
+            signature = ECDSA_do_sign(reinterpret_cast<const unsigned char *>(&digest_), digest_.size(), ec_key);
             *dlen = ECDSA_size(ec_key);
             *der = (unsigned char*)calloc(*dlen, sizeof(unsigned char));
             der_copy = *der;
             i2d_ECDSA_SIG(signature, &der_copy);
             ECDSA_SIG_free(signature);
         }
+        
         bool verify(const unsigned char *der, unsigned int der_len)
-
         {
             const unsigned char* der_copy;
             ECDSA_SIG *signature;
@@ -73,7 +69,7 @@ namespace crypto {
             der_copy = der;
             signature = d2i_ECDSA_SIG(NULL, &der_copy, der_len);
             /** 1:verified. 2:not verified. 3:library error. **/
-            res = ECDSA_do_verify(reinterpret_cast<const unsigned char *>(&digest_), get_hash().size(), signature, ec_key);
+            res = ECDSA_do_verify(reinterpret_cast<const unsigned char *>(&digest_), digest_.size(), signature, ec_key);
             if(res==1)
             {
                 printf("Verify Successfully");
@@ -85,25 +81,19 @@ namespace crypto {
                 return false;
             }
         }
-
-
-        void sha256Hash(const string message) {
+        
+        void sha256Hash(const std::string& message) {
             crypto::sha256 checksum;
             auto hash = checksum.digest(message);
             digest_ = hash.getTextStr_lowercase();
         }
 
-
     private:
         EC_KEY *ec_key;
         char *prv;
         char *pub;
-        string digest_;
-
-
+        std::string digest_;
     };
-
-
-
-
 }
+
+#undef EC_CURVE

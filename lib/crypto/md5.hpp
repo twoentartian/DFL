@@ -3,6 +3,11 @@
 
 #include <stdexcept>
 
+#if USE_OPENSSL
+#include <openssl/evp.h>
+#include <openssl/md5.h>
+#endif
+
 #include "./hash.hpp"
 #include "./hex_data.hpp"
 
@@ -10,7 +15,8 @@ namespace crypto
 {
     class md5 : Hash{
     public:
-	    static constexpr int blocksize = 64;
+	    static constexpr int BLOCK_SIZE = 64;
+	    static constexpr int DIGEST_SIZE = 16;
     private:
 	    static constexpr int S11 = 7;
 		static constexpr int S12 = 12;
@@ -70,8 +76,8 @@ namespace crypto
 	
 	    uint32_t count[2];
 	    uint32_t state[4];
-	    uint8_t buffer[blocksize];
-	    uint8_t digest_[16];
+	    uint8_t buffer[BLOCK_SIZE];
+	    uint8_t digest_[DIGEST_SIZE];
 	    bool finalized;
 	
 	    void init()
@@ -105,7 +111,7 @@ namespace crypto
 	    void transform(const uint8_t* block)
 	    {
 		    uint32_t a = state[0], b = state[1], c = state[2], d = state[3], x[16];
-		    decode (x, block, blocksize);
+		    decode (x, block, BLOCK_SIZE);
 		
 		    /* Round 1 */
 		    FF (a, b, c, d, x[ 0], S11, 0xd76aa478); /* 1 */
@@ -190,7 +196,7 @@ namespace crypto
 	
 	    void update(const uint8_t *input, uint32_t length)
 	    {
-		    uint32_t index = count[0] / 8 % blocksize;
+		    uint32_t index = count[0] / 8 % BLOCK_SIZE;
 		
 		    // Update number of bits
 		    if ((count[0] += (length << 3)) < (length << 3))
@@ -204,8 +210,8 @@ namespace crypto
 			    memcpy(&buffer[index], input, firstpart);
 			    transform(buffer);
 			
-			    // transform chunks of blocksize (64 bytes)
-			    for (i = firstpart; i + blocksize <= length; i += blocksize)
+			    // transform chunks of BLOCK_SIZE (64 bytes)
+			    for (i = firstpart; i + BLOCK_SIZE <= length; i += BLOCK_SIZE)
 				    transform(&input[i]);
 			
 			    index = 0;
@@ -259,5 +265,17 @@ namespace crypto
             }
             return hex_data(digest_, 16);
         }
+
+#if USE_OPENSSL
+        hex_data digest_openssl(const std::string& message) override
+        {
+	        std::string hash;
+	        hash.resize(128 / 8);
+	        MD5((const unsigned char *)message.c_str(), message.size(), (unsigned char *)hash.c_str());
+	        hex_data output(hash.c_str(), DIGEST_SIZE);
+	        return output;
+        }
+#endif
+
     };
 }
