@@ -120,14 +120,7 @@ namespace crypto
 			ECDSA_SIG_free(ecdsaSig);
 			EC_POINT_free(ec_point);
 			EC_KEY_free(ec_key);
-			if(res == 1)
-			{
-				return true;
-			}
-			else
-			{
-				return false;
-			}
+			return res == 1;
 		}
 		
 	private:
