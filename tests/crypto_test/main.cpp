@@ -49,8 +49,5 @@ int main()
 	auto res2 = crypto::ecdsa_openssl::verify(sig, digest.getHexMemory(), pubKey);
 	CHECK_EQ(res2, 0) << "pass faild.";
 	
-
-
-	
 	return 0;
 }
