@@ -78,4 +78,6 @@ list(APPEND Caffe_libs "${CAFFE_LIB}" "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" 
 #set(TENSORFLOW_LIB libtensorflow_cc.so libtensorflow_framework.so libprotobuf.so)
 
 include_directories(lib)
+
 add_subdirectory(tests)
+add_subdirectory(bin)

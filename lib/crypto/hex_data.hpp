@@ -42,7 +42,7 @@ namespace crypto
 		GENERATE_GET(data_str, getTextStr_uppercase);
 		GENERATE_GET(data_memory, getHexMemory);
 		
-		std::string getTextStr_lowercase()
+		std::string getTextStr_lowercase() const
 		{
 			std::string output;
 			output.resize(data_str.size());
@@ -51,6 +51,16 @@ namespace crypto
 				return std::tolower(c);
 			});
 			return output;
+		}
+		
+		void update_hex_from_text()
+		{
+			data_memory = ConvertTextToHex(data_str);
+		}
+		
+		void update_text_from_hex()
+		{
+			data_str = ConvertHexToText(data_memory);
 		}
 		
 	private:
@@ -69,6 +79,11 @@ namespace crypto
 			std::string str(text);
 			delete[] text;
 			return str;
+		}
+		
+		std::string ConvertHexToText(const std::vector<uint8_t>& data)
+		{
+			return ConvertHexToText(data.data(), data.size());
 		}
 		
 		std::vector<uint8_t> ConvertTextToHex(const std::string& text)
