@@ -23,6 +23,11 @@ set(JSON_HOME 3rd/json)
 add_subdirectory(${JSON_HOME})
 include_directories(${JSON_HOME}/include)
 
+# uv-cpp
+add_subdirectory(3rd/uv-cpp)
+include_directories(3rd/uv-cpp)
+LINK_DIRECTORIES(3rd/uv-cpp/libuv1.30.0/lib/gcc8.3.0)
+
 # OS
 if (WIN32)
     message(STATUS "Operation system is WIN32")
@@ -39,7 +44,7 @@ endif ()
 # Boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.71.0 REQUIRED COMPONENTS system filesystem serialization unit_test_framework)
+find_package(Boost 1.71.0 REQUIRED COMPONENTS system filesystem serialization unit_test_framework )
 if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
     target_link_libraries(DFL ${Boost_LIBRARIES})
