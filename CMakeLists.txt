@@ -28,6 +28,10 @@ add_subdirectory(3rd/uv-cpp)
 include_directories(3rd/uv-cpp)
 LINK_DIRECTORIES(3rd/uv-cpp/libuv1.30.0/lib/gcc8.3.0)
 
+# uvw
+# add_subdirectory(3rd/uvw)
+# include_directories(3rd/uvw/src)
+
 # OS
 if (WIN32)
     message(STATUS "Operation system is WIN32")

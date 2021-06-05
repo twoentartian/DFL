@@ -21,7 +21,7 @@ void startClients(uv::EventLoop* loop,uv::SocketAddr& addr,std::vector<uv::TcpCl
 	{
 		client->write(data,(unsigned)size,nullptr);
 	});
-	
+
 	client->connect(addr);
 	clients.push_back(client);
 }
@@ -29,19 +29,32 @@ void startClients(uv::EventLoop* loop,uv::SocketAddr& addr,std::vector<uv::TcpCl
 int main(int argc, char** args)
 {
 	uv::EventLoop* loop = uv::EventLoop::DefaultLoop();
-	
+
 	uv::TcpServer server(loop);
-	server.setMessageCallback([](uv::TcpConnectionPtr ptr,const char* data, ssize_t size)
+	server.setMessageCallback([&loop](uv::TcpConnectionPtr ptr,const char* data, ssize_t size)
 	{
 		std::cout << "server receive: " << std::string(data, size) << std::endl;
+		loop->runInThisLoop([&loop](){
+			loop->stop();
+		});
 	});
+
 	//server.setTimeout(60); //heartbeat timeout.
-	
+
 	uv::SocketAddr addr("0.0.0.0", 10005, uv::SocketAddr::Ipv4);
 	server.bindAndListen(addr);
-	
+
 	std::vector<uv::TcpClientPtr> clients;
 	startClients(loop,addr,clients);
+
+	std::thread t1([&loop](){
+		loop->run();
+	});
+	std::thread t2([&loop](){
+		loop->run();
+	});
+	t1.join();
+	t2.join();
 	
-	loop->run();
+	return 0;
 }
