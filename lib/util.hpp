@@ -37,4 +37,25 @@ namespace util
 			data1[i].swap(data1[random_number]);
 		}
 	}
+	
+	template <typename T>
+	class bool_setter
+	{
+	public:
+		explicit bool_setter(T& value) : _value(value)
+		{
+			_value = true;
+		}
+		
+		~bool_setter() noexcept
+		{
+			_value = false;
+		}
+		
+		bool_setter(const bool_setter&) = delete;
+		bool_setter& operator=(const bool_setter&) = delete;
+	
+	private:
+		T& _value;
+	};
 }

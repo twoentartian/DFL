@@ -1,31 +1,6 @@
 #include <iostream>
 #include <network.hpp>
 
-network::tcp_server server;
-
-void startClients(uv::EventLoop *loop, uv::SocketAddr &addr, std::vector<uv::TcpClientPtr> &clients)
-{
-	uv::TcpClientPtr client = std::make_shared<uv::TcpClient>(loop);
-	client->setConnectStatusCallback(
-			[client](uv::TcpClient::ConnectStatus status)
-			{
-				if (status == uv::TcpClient::ConnectStatus::OnConnectSuccess)
-				{
-					char data[20] = "hello world!";
-					client->write(data, sizeof(data));
-				} else
-				{
-					std::cout << "Error : connect to server fail" << std::endl;
-				}
-			});
-	client->setMessageCallback([client](const char *data, ssize_t size)
-	                           {
-		                           client->write(data, (unsigned) size, nullptr);
-	                           });
-	
-	client->connect(addr);
-	clients.push_back(client);
-}
 
 int main(int argc, char **args)
 {
@@ -45,20 +20,38 @@ int main(int argc, char **args)
 	
 	uv::SocketAddr addr("0.0.0.0", 10005, uv::SocketAddr::Ipv4);
 	server.bindAndListen(addr);
-	
-	std::vector<uv::TcpClientPtr> clients;
-	startClients(loop, addr, clients);
-	
 	std::thread t1([&loop]()
 	               {
 		               loop->run();
 	               });
-	std::thread t2([&loop]()
-	               {
-		               loop->run();
-	               });
+	
+	network::tcp_client client;
+	client.setConnectStatusCallback(
+			[&client](uv::TcpClient::ConnectStatus status)
+			{
+				if (status == uv::TcpClient::ConnectStatus::OnConnectSuccess)
+				{
+					char data[20] = "hello world!";
+					client.write(data, sizeof(data));
+				}
+				else
+				{
+					std::cout << "Error : connect to server fail" << std::endl;
+				}
+			});
+	client.setMessageCallback([&client](const char *data, ssize_t size)
+	                          {
+		                          client.write(data, (unsigned) size, nullptr);
+	                          });
+	client.start();
+	client.connect(addr);
+	
+	
+	//press to stop
+	std::cin.get();
+	
 	t1.join();
-	t2.join();
+	client.close();
 	
 	return 0;
 }

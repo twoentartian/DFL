@@ -1,9 +1,7 @@
 #pragma once
 
 #include <atomic>
-#include <mutex>
 #include <chrono>
-#include <condition_variable>
 #include <uv/include/uv11.hpp>
 #include "uv_types.hpp"
 
@@ -12,7 +10,14 @@ namespace network
 	class tcp_server
 	{
 	public:
-		explicit tcp_server(bool tcpNoDelay = true)
+		using OnConnectionStatusCallback = uv::OnConnectionStatusCallback;
+		using OnMessageCallback = uv::OnMessageCallback;
+		
+		using OnCloseCallback = uv::OnCloseCallback;
+		using CloseCompleteCallback = uv::OnCloseCallback;
+		
+	public:
+		explicit tcp_server(bool tcpNoDelay = true) : _running_thread_count(0)
 		{
 			_loop.reset(new uv::EventLoop);
 			_server.reset(new uv::TcpServer(_loop.get(), tcpNoDelay));
@@ -62,7 +67,7 @@ namespace network
 			});
 			
 			// wait for threads exit
-			// if resource deadlock avoided thrown in single_thread.join(),
+			// if resource deadlock avoided thrown in join(),
 			// check close() should not be invoked in tcp_server callback.
 			_thread->join();
 			

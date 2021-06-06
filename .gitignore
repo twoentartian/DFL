@@ -73,7 +73,7 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
-# Editor-based Rest Client
+# Editor-based Rest tcp_client
 .idea/httpRequests
 
 # Android studio 3.1+ serialized cache file
@@ -150,7 +150,7 @@ fabric.properties
 
 # Crashlytics plugin (for Android Studio and IntelliJ)
 
-# Editor-based Rest Client
+# Editor-based Rest tcp_client
 
 # Android studio 3.1+ serialized cache file
 
@@ -438,7 +438,7 @@ UpgradeLog*.htm
 ServiceFabricBackup/
 *.rptproj.bak
 
-# SQL Server files
+# SQL tcp_server files
 *.mdf
 *.ldf
 *.ndf
@@ -475,8 +475,8 @@ node_modules/
 **/*.HTMLClient/GeneratedArtifacts
 **/*.DesktopClient/GeneratedArtifacts
 **/*.DesktopClient/ModelManifest.xml
-**/*.Server/GeneratedArtifacts
-**/*.Server/ModelManifest.xml
+**/*.tcp_server/GeneratedArtifacts
+**/*.tcp_server/ModelManifest.xml
 _Pvt_Extensions
 
 # Paket dependency manager

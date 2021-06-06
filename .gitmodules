@@ -1,0 +1,3 @@
+[submodule "3rd/uv-cpp"]
+	path = 3rd/uv-cpp
+	url = https://github.com/twoentartian/uv-cpp.git
