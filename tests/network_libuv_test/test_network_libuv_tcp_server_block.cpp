@@ -11,13 +11,11 @@ void startClients(uv::EventLoop *loop, uv::SocketAddr &addr, std::vector<uv::Tcp
 			{
 				if (status == uv::TcpClient::ConnectStatus::OnConnectSuccess)
 				{
-					char data[20] = "hello world!";
-					client->write(data, sizeof(data));
-					loop->runInThisLoop([loop]()
-					                    {
-						                    loop->stop();
-					                    });
-				} else
+					std::string data = "hello world!";
+					client->write(data.data(), data.size());
+					client->close([](uv::TcpClient*){});
+				}
+				else
 				{
 					std::cout << "Error : connect to server fail" << std::endl;
 				}
@@ -38,6 +36,7 @@ int main(int argc, char **args)
 	server.setMessageCallback([&loop](uv::TcpConnectionPtr ptr, const char *data, ssize_t size)
 	                          {
 		                          std::cout << "server receive: " << std::string(data, size) << std::endl;
+		                          std::this_thread::sleep_for(std::chrono::seconds(5));
 	                          });
 	
 	network::SocketAddr addr("0.0.0.0", 10005, uv::SocketAddr::Ipv4);
@@ -47,7 +46,7 @@ int main(int argc, char **args)
 		std::cout << "error to creat server" << std::endl;
 		return 0;
 	}
-	server.start(1);
+	server.start();
 	
 	std::vector<uv::TcpClientPtr> clients;
 	startClients(loop, addr, clients);

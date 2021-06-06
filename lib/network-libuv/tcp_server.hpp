@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <chrono>
 #include <condition_variable>
 #include <uv/include/uv11.hpp>
 #include "uv_types.hpp"
@@ -27,28 +28,23 @@ namespace network
 			return _server->bindAndListen(addr);
 		}
 		
-		void start(size_t worker = 1)
+		void start()
 		{
-			if (_running_thread_count != 0)
-			{
+			if (isRunning())
 				return;
-			}
 			
-			_thread_pool.reserve(worker);
-			for (int i = 0; i < worker; ++i)
-			{
-				_thread_pool.emplace_back([this]()
-				                          {
-					                          _running_thread_count++;
-					                          this->_loop->run();
-					                          _running_thread_count--;
-				                          });
-			}
-			
+			_thread.reset(new std::thread([this](){
+				_running_thread_count++;
+				this->_loop->run();
+				_running_thread_count--;
+			}));
 		}
 		
 		void close(const DefaultCallback& callback = nullptr)
 		{
+			if (isClosed())
+				return;
+			
 			// close server
 			if (callback)
 			{
@@ -66,22 +62,17 @@ namespace network
 			});
 			
 			// wait for threads exit
-			for (auto&& single_thread : _thread_pool)
-			{
-				single_thread.join();
-			}
+			// if resource deadlock avoided thrown in single_thread.join(),
+			// check close() should not be invoked in tcp_server callback.
+			_thread->join();
 			
 			// erase loop in thread pool
-			_thread_pool.clear();
-			
-			//waitForClose();
-
-			_thread_pool.clear();
+			_thread.reset();
 		}
 		
 		TcpConnectionPtr getConnection(const std::string& name)
 		{
-			_server->getConnection(name);
+			return _server->getConnection(name);
 		}
 		
 		void closeConnection(const std::string& name)
@@ -99,7 +90,6 @@ namespace network
 			_server->setConnectCloseCallback(callback);
 		}
 		
-		//never try to close the server in any callback/handler
 		void setMessageCallback(OnMessageCallback callback)
 		{
 			_server->setMessageCallback(callback);
@@ -147,11 +137,9 @@ namespace network
 		
 		void waitForClose()
 		{
-			//std::unique_lock<std::mutex> lk(_mutex);
 			while (_running_thread_count != 0)
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
-				//_state_change_cv.wait(lk);
 			}
 		}
 	
@@ -164,10 +152,8 @@ namespace network
 	private:
 		std::shared_ptr<uv::TcpServer> _server;
 		std::shared_ptr<uv::EventLoop> _loop;
-		std::vector<std::thread> _thread_pool;
+		std::shared_ptr<std::thread> _thread;
 		std::atomic_int _running_thread_count;
-//		std::condition_variable _state_change_cv;
-//		std::mutex _mutex;
 	};
 	
 }

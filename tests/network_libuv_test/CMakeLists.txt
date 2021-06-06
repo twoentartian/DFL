@@ -10,3 +10,6 @@ target_link_libraries(TEST_network_tcp_client uv_cpp "${Boost_LIBRARIES}" "libuv
 
 add_executable(TEST_libuv_cpp_loop_exit test_libuv_cpp_loop_exit.cpp)
 target_link_libraries(TEST_libuv_cpp_loop_exit uv_cpp "${Boost_LIBRARIES}" "libuv.a" -pthread)
+
+add_executable(TEST_network_tcp_server_block test_network_tcp_server_block.cpp)
+target_link_libraries(TEST_network_tcp_server_block uv_cpp "${Boost_LIBRARIES}" "libuv.a" -pthread)
