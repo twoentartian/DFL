@@ -9,7 +9,7 @@
 
 // use libuv
 #if USE_LIBUV
-#include "network-libuv//tcp_server.hpp"
+#include "network-libuv/tcp_server.hpp"
 #include "network-libuv/tcp_client.hpp"
 #endif
 

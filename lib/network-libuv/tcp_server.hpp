@@ -2,6 +2,9 @@
 
 #include <atomic>
 #include <chrono>
+#include <vector>
+#include <map>
+#include <string>
 #include <uv/include/uv11.hpp>
 #include "uv_types.hpp"
 
@@ -146,6 +149,11 @@ namespace network
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			}
+		}
+		
+		std::map<std::string, TcpConnectionPtr> getAllConnection()
+		{
+			return _server->getAllConnection();
 		}
 	
 	public:
