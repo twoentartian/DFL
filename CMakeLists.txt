@@ -78,6 +78,10 @@ find_package(OpenCV REQUIRED)
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
+# RocksDB
+find_package(RocksDB REQUIRED)
+include_directories(${RocksDB_INCLUDE_DIR})
+
 list(APPEND Caffe_libs "${CAFFE_LIB}" "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")
 
 # TensorFlow
