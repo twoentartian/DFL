@@ -4,64 +4,70 @@
 
 namespace network
 {
-	namespace tcp
+	typedef Protocol_StartSignWithLengthInfo_AsioSocket_Async PROTOCOL_ABS;
+	
+	enum tcp_status
 	{
-		typedef Protocol_StartSignWithLengthInfo_AsioSocket_Async PROTOCOL_ABS;
+		Success = 0,
+		PortNotValid,
+		PortOccupied,
+		AddressNotValid,
+		InvalidArgs,
+		PotentialErrorPacket_LengthNotIdentical,
+		SocketCorrupted,
+		ConnectionFailed,
+		NoSenseOperation,
 		
-		enum tcp_status
-		{
-			Success = 0,
-			PortNotValid,
-			PortOccupied,
-			AddressNotValid,
-			InvalidArgs,
-			PotentialErrorPacket_LengthNotIdentical,
-			SocketCorrupted,
-			ConnectionFailed,
-			NoSenseOperation,
-			
-			TcpStatus_Last_index
-		};
+		TcpStatus_Last_index
+	};
+	
+	class tcp_point
+	{
+	public:
+		virtual tcp_status SendRaw(const uint8_t *data, uint32_t length) = 0;
 		
-		class tcp_point
-		{
-		public:
-			virtual tcp_status SendRaw(const uint8_t* data, uint32_t length) = 0;
-			virtual tcp_status SendProtocol(const uint8_t* data, uint32_t length, uint32_t speedLimit = 0, uint32_t packet_size = 0) = 0;
-			[[nodiscard]] virtual std::string ip() const = 0;
-			[[nodiscard]] virtual uint16_t port() const = 0;
-			[[nodiscard]] virtual bool isConnected() const = 0;
-			[[nodiscard]] virtual bool isReceiving() const = 0;
-			[[nodiscard]] virtual bool isSending() const = 0;
-			virtual void Disconnect() const = 0;
-			virtual void WaitForClose() const = 0;
-		};
-	}
+		virtual tcp_status SendProtocol(const uint8_t *data, uint32_t length, uint32_t speedLimit = 0, uint32_t packet_size = 0) = 0;
+		
+		[[nodiscard]] virtual std::string ip() const = 0;
+		
+		[[nodiscard]] virtual uint16_t port() const = 0;
+		
+		[[nodiscard]] virtual bool isConnected() const = 0;
+		
+		[[nodiscard]] virtual bool isReceiving() const = 0;
+		
+		[[nodiscard]] virtual bool isSending() const = 0;
+		
+		virtual void Disconnect() const = 0;
+		
+		virtual void WaitForClose() const = 0;
+	};
+	
 }
 
 namespace std
 {
-	std::string to_string(network::tcp::tcp_status status)
+	std::string to_string(network::tcp_status status)
 	{
 		switch (status)
 		{
-			case network::tcp::tcp_status::Success:
+			case network::tcp_status::Success:
 				return "success";
-			case network::tcp::tcp_status::PortNotValid:
+			case network::tcp_status::PortNotValid:
 				return "port is not valid";
-			case network::tcp::tcp_status::PortOccupied:
+			case network::tcp_status::PortOccupied:
 				return "port is occupied";
-			case network::tcp::tcp_status::AddressNotValid:
+			case network::tcp_status::AddressNotValid:
 				return "address is not valid";
-			case network::tcp::tcp_status::InvalidArgs:
+			case network::tcp_status::InvalidArgs:
 				return "args are not valid";
-			case network::tcp::tcp_status::PotentialErrorPacket_LengthNotIdentical:
+			case network::tcp_status::PotentialErrorPacket_LengthNotIdentical:
 				return "the length of the packet does not identical to the named length";
-			case network::tcp::tcp_status::SocketCorrupted:
+			case network::tcp_status::SocketCorrupted:
 				return "the socket might have been close";
-			case network::tcp::tcp_status::ConnectionFailed:
+			case network::tcp_status::ConnectionFailed:
 				return "connect failed";
-			case network::tcp::tcp_status::NoSenseOperation:
+			case network::tcp_status::NoSenseOperation:
 				return "this operation does not make any sense. This operation might have been done before and it cannot be executed twice";
 			default:
 				return "not defined";

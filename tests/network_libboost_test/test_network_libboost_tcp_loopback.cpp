@@ -1,3 +1,4 @@
+#define NETWORK_USE_LIBBOOST
 #include <boost/format.hpp>
 #include <boost/shared_array.hpp>
 #include "network.hpp"
@@ -7,9 +8,9 @@ constexpr uint32_t dataLength = 10 * 1024;
 
 int main()
 {
-	using namespace network::tcp;
+	using namespace network;
 	
-	size_t global_counter = 1;
+	size_t global_counter = 2;
 	while (global_counter--)
 	{
 		// Server
@@ -20,7 +21,7 @@ int main()
 		
 		server.SetAcceptHandler([&cout_lock, &server_count](const std::string& ip, uint16_t port, std::shared_ptr<tcp_session> session)
 		                        {
-			                        session->SetReceiveHandler([&cout_lock, &server_count](uint8_t* data, uint32_t length, network::tcp::tcp_status status, std::shared_ptr<network::tcp::tcp_session> session_receive)
+			                        session->SetReceiveHandler([&cout_lock, &server_count](uint8_t* data, uint32_t length, network::tcp_status status, std::shared_ptr<network::tcp_session> session_receive)
 			                                                   {
 				                                                   if (status == tcp_status::Success)
 				                                                   {
@@ -57,7 +58,7 @@ int main()
 		std::cin.get();
 		
 		// tcp_client
-		const int NumberOfClient = 1;
+		const int NumberOfClient = 100;
 		std::shared_ptr<tcp_client> clients[NumberOfClient];
 		int client_counts[NumberOfClient];
 
@@ -139,10 +140,10 @@ int main()
 //			}
 //		}
 
-//		for (size_t i = 0; i < NumberOfClient; i++)
-//		{
-//			clients[i]->Disconnect();
-//		}
+		for (size_t i = 0; i < NumberOfClient; i++)
+		{
+			clients[i]->Disconnect();
+		}
 		
 		std::cout << "press to end server" << std::endl;
 		std::cin.get();

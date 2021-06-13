@@ -12,5 +12,5 @@ namespace network
 	using SocketAddr = uv::SocketAddr;
 	using PacketBufferPtr = uv::PacketBufferPtr;
 	using AfterWriteCallback = uv::AfterWriteCallback;
-	
+	using WriteInfo = uv::WriteInfo;
 }

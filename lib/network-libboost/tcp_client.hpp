@@ -12,7 +12,7 @@
 #include "tcp_common.hpp"
 #include <util.hpp>
 
-namespace network::tcp
+namespace network
 {
 	class tcp_client : public std::enable_shared_from_this<tcp_client>, public tcp_point
 	{

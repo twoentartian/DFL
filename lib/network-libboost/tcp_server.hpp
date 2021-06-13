@@ -12,7 +12,7 @@
 #include "tcp_protocol_impl.hpp"
 #include "util.hpp"
 
-namespace network::tcp
+namespace network
 {
 	class tcp_server;
 	

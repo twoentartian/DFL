@@ -1,23 +1,36 @@
 #pragma once
 
-#define USE_LIBBOOST    false
-#define USE_LIBUV       true
+#if !defined(NETWORK_USE_LIBBOOST) && !defined(NETWORK_USE_LIBUV)
+#define NETWORK_USE_LIBBOOST    false
+#define NETWORK_USE_LIBUV       true
+#else
+#ifdef NETWORK_USE_LIBBOOST
+#undef NETWORK_USE_LIBBOOST
+#define NETWORK_USE_LIBBOOST true
+#endif
+#ifdef NETWORK_USE_LIBUV
+#undef NETWORK_USE_LIBUV
+#define NETWORK_USE_LIBUV true
+#endif
+#endif
 
-#if (USE_LIBUV && USE_LIBBOOST) || !(USE_LIBUV || USE_LIBBOOST)
+#if (NETWORK_USE_LIBUV && NETWORK_USE_LIBBOOST) || !(NETWORK_USE_LIBUV || NETWORK_USE_LIBBOOST)
 #error choose libboost or libuv innetwork
 #endif
 
 // use libuv
-#if USE_LIBUV
+#if NETWORK_USE_LIBUV
 #include "network-libuv/tcp_server.hpp"
 #include "network-libuv/tcp_client.hpp"
+#include "network-libuv/p2p.hpp"
 #endif
 
 // use libboost
-#if USE_LIBBOOST
+#if NETWORK_USE_LIBBOOST
 #include "network-libboost/tcp_server.hpp"
 #include "network-libboost/tcp_client.hpp"
+#include "network-libboost/udp.hpp"
 #endif
 
-#undef USE_LIBUV
-#undef USE_LIBBOOST
+#undef NETWORK_USE_LIBUV
+#undef NETWORK_USE_LIBBOOST

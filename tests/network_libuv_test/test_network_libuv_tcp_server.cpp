@@ -55,6 +55,9 @@ int main(int argc, char **args)
 	
 	std::cin.get();
 	
+	startClients(loop, addr, clients);
+	std::cin.get();
+	
 	server.close();
 	server.waitForClose();
 	return 0;
