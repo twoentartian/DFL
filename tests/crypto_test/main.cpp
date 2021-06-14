@@ -4,7 +4,7 @@
 #include <iostream>
 #include <glog/logging.h>
 #include <string>
-
+#include <info_toolkit.hpp>
 #include "measure_time.hpp"
 int main()
 {
@@ -15,7 +15,7 @@ int main()
     std::cout<<output1.getTextStr_lowercase()<<std::endl;
     std::string answer = "22ff0efe270b305371c97346e0619c987cfd10a5bb7c3acfcd7c92790a9ca91c";
     CHECK_EQ(output1.getTextStr_lowercase(), answer) << "pass faild.";
-	
+
 	//sha256
     std::string message1 = "BlockChain";
 	MEASURE_TIME(auto output2 = sha256_test.digest(message1);)
@@ -39,7 +39,10 @@ int main()
 	const std::string buff ="this is a ecdsa testing";
 	crypto::sha256 sha256;
 	auto digest = sha256.digest(buff);
-	auto [pubKey, prvKey] = crypto::ecdsa_openssl::generate_key_pairs();
+//	auto [pubKey, prvKey] = crypto::ecdsa_openssl::generate_key_pairs();
+	auto keypair = crypto::ecdsa_openssl::generate_key_pairs();
+	auto pubKey = std::get<0>(keypair);
+    auto prvKey = std::get<1>(keypair);
 	auto sig = crypto::ecdsa_openssl::sign(digest, prvKey);
 	auto res1 = crypto::ecdsa_openssl::verify(sig, digest.getHexMemory(), pubKey);
 	CHECK_EQ(res1, 1) << "pass faild.";
@@ -48,6 +51,14 @@ int main()
 	sig.update_text_from_hex();
 	auto res2 = crypto::ecdsa_openssl::verify(sig, digest.getHexMemory(), pubKey);
 	CHECK_EQ(res2, 0) << "pass faild.";
-	
+
+	info_toolkit node(pubKey,prvKey);
+    node.print_pubkey();
+    info_toolkit node2(keypair);
+    node2.print_pubkey();
+    info_toolkit node1;
+    node1.print_pubkey();
+
+
 	return 0;
 }
