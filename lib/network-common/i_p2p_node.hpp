@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <tuple>
+#include <exception.hpp>
 
 namespace network
 {
@@ -36,6 +37,11 @@ namespace network
 		virtual void send(const std::string& ip, uint16_t port, address_type type, const uint8_t* data, size_t size, send_callback callback) = 0;
 		
 		virtual void start_service(uint16_t port) = 0;
+		
+		virtual void start_service(uint16_t port, int worker)
+		{
+			THROW_NOT_IMPLEMENTED;
+		}
 		
 		virtual void stop_service() = 0;
 		

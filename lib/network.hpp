@@ -29,7 +29,10 @@
 #if NETWORK_USE_LIBBOOST
 #include "network-libboost/tcp_server.hpp"
 #include "network-libboost/tcp_client.hpp"
+#include "network-libboost/p2p.hpp"
 #include "network-libboost/udp.hpp"
+#include "network-libboost/tcp_simple_server.hpp"
+#include "network-libboost/tcp_simple_client.hpp"
 #endif
 
 #undef NETWORK_USE_LIBUV

@@ -161,6 +161,7 @@ namespace network
 		}
 	
 	private:
+		friend class tcp_server;
 		static uint32_t _session_counter;
 		
 		std::atomic<bool> _connected;
@@ -175,6 +176,9 @@ namespace network
 		std::vector<CloseHandlerType> _closeHandlers;
 		std::vector<ReceiveHandlerType> _receiveHandlers;
 		std::vector<ReceiveErrorHandlerType> _receiveErrorHandlers;
+		std::vector<CloseHandlerType>* _server_closeHandlers;
+		std::vector<ReceiveHandlerType>* _server_receiveHandlers;
+		std::vector<ReceiveErrorHandlerType>* _server_receiveErrorHandlers;
 		uint8_t *_buffer;
 		
 		PROTOCOL_ABS _protocol;
@@ -187,6 +191,10 @@ namespace network
 			}
 			
 			auto self(shared_from_this());
+			for (auto &&close_handler : *_server_closeHandlers)
+			{
+				close_handler(self);
+			}
 			for (auto &&close_handler : _closeHandlers)
 			{
 				close_handler(self);
@@ -207,6 +215,11 @@ namespace network
 				if (status != ProtocolStatus::Success)
 				{
 					do_read();
+					for (auto &&receive_error_handler : *_server_receiveErrorHandlers)
+					{
+						auto self(shared_from_this());
+						receive_error_handler(status, self);
+					}
 					for (auto &&receive_error_handler : _receiveErrorHandlers)
 					{
 						auto self(shared_from_this());
@@ -239,6 +252,18 @@ namespace network
 						}
 						
 						//Check whether the receive handler is set.
+						for (auto &&receive_handler : *_server_receiveHandlers)
+						{
+							auto self(shared_from_this());
+							if (real_receive_length == est_length)
+							{
+								receive_handler(_buffer, est_length, Success, self);
+							}
+							else
+							{
+								receive_handler(_buffer, real_receive_length, PotentialErrorPacket_LengthNotIdentical, self);
+							}
+						}
 						for (auto &&receive_handler : _receiveHandlers)
 						{
 							auto self(shared_from_this());
@@ -251,6 +276,7 @@ namespace network
 								receive_handler(_buffer, real_receive_length, PotentialErrorPacket_LengthNotIdentical, self);
 							}
 						}
+
 						
 						delete[] _buffer;
 						
@@ -284,6 +310,10 @@ namespace network
 			for (size_t i = 1; i < _closeHandlers.size(); i++)
 			{
 				_closeHandlers[i](self);
+			}
+			for (auto &&close_handler : *_server_closeHandlers)
+			{
+				close_handler(self);
 			}
 			
 			_connected = false;
@@ -484,6 +514,21 @@ namespace network
 				}
 			}
 		}
+		
+		void SetCloseHandler(const tcp_session::CloseHandlerType &handler)
+		{
+			_closeHandlers.push_back(handler);
+		}
+		
+		void SetReceiveHandler(const tcp_session::ReceiveHandlerType &handler)
+		{
+			_receiveHandlers.push_back(handler);
+		}
+		
+		void SetReceiveErrorHandler(const tcp_session::ReceiveErrorHandlerType &handler)
+		{
+			_receiveErrorHandlers.push_back(handler);
+		}
 	
 	private:
 		RWLock _lock_acceptor_thread_container;
@@ -571,6 +616,9 @@ namespace network
 			if (!ec)
 			{
 				std::shared_ptr<tcp_session> clientSession = std::make_shared<tcp_session>(socket_ptr);
+				clientSession->_server_closeHandlers = &this->_closeHandlers;
+				clientSession->_server_receiveErrorHandlers = &this->_receiveErrorHandlers;
+				clientSession->_server_receiveHandlers = &this->_receiveHandlers;
 				
 				const auto remote_endpoint = socket_ptr->remote_endpoint();
 				const std::string &remote_ip = remote_endpoint.address().to_string();
@@ -699,11 +747,16 @@ namespace network
 		}
 	
 	private:
+		friend class tcp_session;
 		const bool _sessionControlEnabled;
 		std::unordered_map<std::string, std::shared_ptr<TheClientsOfServer>> _clientMap_WithSessionControl;
 		RWLock _lockClientMap_WithSessionControl;
 		std::unordered_map<uint64_t, std::shared_ptr<tcp_session>> _sessionMap_WithoutSessionControl;
 		RWLock _lockSessionMap_WithoutSessionControl;
+		
+		std::vector<tcp_session::CloseHandlerType> _closeHandlers;
+		std::vector<tcp_session::ReceiveHandlerType> _receiveHandlers;
+		std::vector<tcp_session::ReceiveErrorHandlerType> _receiveErrorHandlers;
 		
 		uint64_t getAvailableIndexInSessionMap_WithoutSessionControl()
 		{
