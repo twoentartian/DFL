@@ -7,7 +7,7 @@
 #include <boost/thread.hpp>
 #include <boost/bind/bind.hpp>
 
-#include "tcp_common.hpp"
+#include "tcp_status.hpp"
 
 namespace network::simple
 {

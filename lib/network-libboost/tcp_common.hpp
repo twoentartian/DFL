@@ -1,25 +1,11 @@
 #pragma once
 
 #include "tcp_protocol_impl.hpp"
+#include "tcp_status.hpp"
 
 namespace network
 {
 	typedef Protocol_StartSignWithLengthInfo_AsioSocket_Async PROTOCOL_ABS;
-	
-	enum tcp_status
-	{
-		Success = 0,
-		PortNotValid,
-		PortOccupied,
-		AddressNotValid,
-		InvalidArgs,
-		PotentialErrorPacket_LengthNotIdentical,
-		SocketCorrupted,
-		ConnectionFailed,
-		NoSenseOperation,
-		
-		TcpStatus_Last_index
-	};
 	
 	class tcp_point
 	{

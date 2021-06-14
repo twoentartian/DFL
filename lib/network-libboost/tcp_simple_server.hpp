@@ -10,7 +10,7 @@
 #include <boost/bind/bind.hpp>
 
 #include "lock.hpp"
-#include "tcp_common.hpp"
+#include "tcp_status.hpp"
 
 //simple tcp server is designed for short TCp connection, without built-in protocol.
 namespace network::simple
