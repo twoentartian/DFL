@@ -158,13 +158,34 @@ namespace crypto
 	    
         hex_data digest(const std::string &message) override
         {
-            uint8_t digest[DIGEST_SIZE];
-            memset(digest,0,DIGEST_SIZE);
-            init();
-            update((uint8_t*)message.c_str(),message.length());
-            final(digest);
-            return hex_data(digest, DIGEST_SIZE);
+	        return digest((uint8_t*)message.data(), message.size());
         }
+        
+        static hex_data digest_s(const std::string &message)
+        {
+	        return digest_s((uint8_t*)message.data(), message.size());
+        }
+		
+		hex_data digest(const uint8_t* data, size_t size)
+		{
+			uint8_t digest[DIGEST_SIZE];
+			memset(digest,0,DIGEST_SIZE);
+			init();
+			update(data, size);
+			final(digest);
+			return hex_data(digest, DIGEST_SIZE);
+		}
+		
+		static hex_data digest_s(const uint8_t* data, size_t size)
+		{
+			sha256 ctx;
+			uint8_t digest[DIGEST_SIZE];
+			memset(digest,0,DIGEST_SIZE);
+			ctx.init();
+			ctx.update(data, size);
+			ctx.final(digest);
+			return hex_data(digest, DIGEST_SIZE);
+		}
 
 #if USE_OPENSSL
 		hex_data digest_openssl(const std::string& message) override

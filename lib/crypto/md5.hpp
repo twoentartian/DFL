@@ -255,16 +255,40 @@ namespace crypto
     public:
         hex_data digest(const std::string &message) override
         {
-            init();
-            update((uint8_t*)message.c_str(), message.length());
-            final();
-            if (!finalized)
-            {
-	            //Error
-	            throw std::logic_error("fail to calculate md5");
-            }
-            return hex_data(digest_, 16);
+	        return digest(reinterpret_cast<const uint8_t*>(message.data()), message.size());
         }
+        
+        static hex_data digest_s(const std::string &message)
+        {
+	        return digest_s(reinterpret_cast<const uint8_t*>(message.data()), message.size());
+        }
+	
+	    hex_data digest(const uint8_t* data, size_t size)
+	    {
+		    init();
+		    update(data, size);
+		    final();
+		    if (!finalized)
+		    {
+			    //Error
+			    throw std::logic_error("fail to calculate md5");
+		    }
+		    return hex_data(digest_, 16);
+	    }
+	
+	    static hex_data digest_s(const uint8_t* data, size_t size)
+	    {
+	    	md5 ctx;
+		    ctx.init();
+		    ctx.update(data, size);
+		    ctx.final();
+		    if (!ctx.finalized)
+		    {
+			    //Error
+			    throw std::logic_error("fail to calculate md5");
+		    }
+		    return hex_data(ctx.digest_, 16);
+	    }
 
 #if USE_OPENSSL
         hex_data digest_openssl(const std::string& message) override
