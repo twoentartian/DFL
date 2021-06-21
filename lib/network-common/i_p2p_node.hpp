@@ -11,13 +11,21 @@ namespace network
 	public:
 		enum send_packet_status
 		{
-			send_callback_not_specified = 0,
+			send_packet_not_specified = 0,
 			send_packet_success,
 			send_packet_connection_fail,
 			send_packet_write_fail,
 			send_packet_no_reply,
 			
 			send_packet_status_size
+		};
+		
+		static constexpr char const* send_packet_status_message[send_packet_status_size] = {
+				"not specified",
+				"success",
+				"connection fail",
+				"write fail",
+				"no reply"
 		};
 		
 		enum address_type
@@ -47,4 +55,5 @@ namespace network
 		
 		virtual void set_receive_callback(receive_callback callback) = 0;
 	};
+	
 }

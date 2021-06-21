@@ -28,7 +28,7 @@ namespace network
 			return tempClientPtr;
 		}
 		
-		~tcp_client() noexcept
+		~tcp_client() noexcept(false)
 		{
 			if (_connected)
 			{

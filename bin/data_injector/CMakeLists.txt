@@ -1,0 +1,2 @@
+add_executable(data_injector_mnist mnist_data_injector.cpp)
+target_link_libraries(data_injector_mnist "${OPENSSL_CRYPTO_LIBRARY}" caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")

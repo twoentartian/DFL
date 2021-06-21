@@ -29,7 +29,7 @@ namespace network
 			std::string received_data;
 			std::mutex m;
 			std::condition_variable cv;
-			send_packet_status p2p_status = send_callback_not_specified;
+			send_packet_status p2p_status = send_packet_not_specified;
 			
 			std::shared_ptr<simple::tcp_client> client = simple::tcp_client::CreateClient();
 			client->connect(ip, port);
@@ -40,7 +40,17 @@ namespace network
 					                          if (_enable_log)
 						                          LOG(INFO) << boost::format("[p2p] connection to %1%:%2% built") % ip % port;
 					                          p2p_status = send_packet_no_reply;
-					                          auto send_status = client->write(data, size);
+					                          tcp_status send_status;
+					                          try
+					                          {
+						                          send_status = client->write(data, size);
+					                          }
+					                          catch (...)
+					                          {
+						                          LOG(WARNING) << boost::format("[p2p] failed to send request to %1%:%2%") % ip % port;
+						                          return;
+					                          }
+
 					                          if (send_status != Success)
 					                          {
 						                          p2p_status = send_packet_connection_fail;
@@ -103,7 +113,8 @@ namespace network
 					                                 }
 					                                 catch (...)
 					                                 {
-						
+						                                 LOG(WARNING) << boost::format("[p2p] failed to send reply to %1%:%2%") % session_receive->ip() % session_receive->port();
+						                                 return;
 					                                 }
 				                                 }
 			                                 });

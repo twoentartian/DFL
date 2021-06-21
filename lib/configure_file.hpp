@@ -102,7 +102,7 @@ public:
 	}
 	
 	template<typename T>
-	std::optional<T> get(const std::string& key_name)
+	std::optional<T> get(const std::string& key_name) const
 	{
 		T output;
 		try

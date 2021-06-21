@@ -1,8 +1,8 @@
 #pragma once
 
 #if !defined(NETWORK_USE_LIBBOOST) && !defined(NETWORK_USE_LIBUV)
-#define NETWORK_USE_LIBBOOST    false
-#define NETWORK_USE_LIBUV       true
+#define NETWORK_USE_LIBBOOST    true
+#define NETWORK_USE_LIBUV       false
 #else
 #ifdef NETWORK_USE_LIBBOOST
 #undef NETWORK_USE_LIBBOOST

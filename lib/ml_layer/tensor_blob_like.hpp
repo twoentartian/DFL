@@ -46,12 +46,6 @@ namespace Ml {
             DType *data_vec = blob.mutable_cpu_data();
             std::memcpy(data_vec, _data.data(), _data.size() * sizeof(DType));
         }
-
-        template<class Archive>
-        void serialize(Archive &ar, const unsigned int version) {
-            ar & _shape;
-            ar & _data;
-        }
         
         bool operator == (const tensor_blob_like& target) const
         {
@@ -116,8 +110,8 @@ namespace Ml {
 	        this->_data.swap(target._data);
 	        this->_shape.swap(target._shape);
         }
-        
-        std::string get_hash_str() const
+	
+	    [[nodiscard]] std::string get_str() const
 	    {
 			std::stringstream output;
 		    for (auto&& shape: _shape)
@@ -133,7 +127,12 @@ namespace Ml {
      
     private:
         friend class boost::serialization::access;
-
+	    template<class Archive>
+	    void serialize(Archive &ar, const unsigned int version) {
+		    ar & _shape;
+		    ar & _data;
+	    }
+        
         std::vector<int> _shape;
         std::vector<DType> _data;
     };

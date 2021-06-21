@@ -18,6 +18,13 @@ public:
 	
 	byte_buffer(const byte_buffer& target) = delete;
 	
+	void swap(byte_buffer& target)
+	{
+		uint8_t *temp_ptr = this->_buffer;
+		this->_buffer = target._buffer;
+		target._buffer = temp_ptr;
+	}
+	
 	~byte_buffer()
 	{
 		delete[] _buffer;
@@ -33,7 +40,20 @@ public:
 		return _loc;
 	}
 	
-	void add(const uint8_t& value)
+	inline void add(const byte_buffer& value)
+	{
+		for (int i = 0; i < value._loc; i++)
+		{
+			_buffer[_loc] = value.data()[i];
+			++_loc;
+			if (_loc == _capacity)
+			{
+				ExtendCapacity();
+			}
+		}
+	}
+	
+	inline void add(const uint8_t& value)
 	{
 		_buffer[_loc] = value;
 		++_loc;
@@ -129,13 +149,6 @@ public:
 		{
 			ExtendCapacity();
 		}
-	}
-	
-	template<typename T>
-	byte_buffer& operator << (T data)
-	{
-		this->add(data);
-		return *this;
 	}
 	
 private:

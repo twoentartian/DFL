@@ -8,6 +8,7 @@
 #include <boost/archive/text_iarchive.hpp>
 
 #include <caffe/solver.hpp>
+#include <caffe/sgd_solvers.hpp>
 #include <caffe/net.hpp>
 
 #include "./ml_abs.hpp"

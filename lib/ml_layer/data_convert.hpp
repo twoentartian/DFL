@@ -74,7 +74,7 @@ namespace Ml{
 	        //generate _container_by_label
 	        for (int index = 0; index < num_items; ++index)
 	        {
-	        	std::string key = _label[index].get_hash_str();
+	        	std::string key = _label[index].get_str();
 	        	auto key_iter = _container_by_label.find(key);
 		        if (key_iter == _container_by_label.end())
 		        {
@@ -120,7 +120,7 @@ namespace Ml{
 	    std::tuple<std::vector<tensor_blob_like<DType>>, std::vector<tensor_blob_like<DType>>> get_random_data_by_Label(const tensor_blob_like<DType>& arg_label, int size)
 	    {
         	//does not exist key
-        	const std::string key_str = arg_label.get_hash_str();
+        	const std::string key_str = arg_label.get_str();
 			auto iter = _container_by_label.find(key_str);
 			if(iter == _container_by_label.end())
 			{

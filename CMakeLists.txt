@@ -5,8 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
-add_executable(DFL main.cpp)
-
 # Caffe manual
 #set(CAFFE_HOME 3rd/caffe)
 #include_directories(${CAFFE_HOME}/include)
@@ -44,17 +42,11 @@ elseif(UNIX)
     set(BOOST_ROOT "./3rd/boost_1_75_0")
 endif ()
 
-
 # Boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 find_package(Boost 1.71.0 REQUIRED COMPONENTS system filesystem serialization unit_test_framework )
-if(Boost_FOUND)
-    include_directories(${Boost_INCLUDE_DIRS})
-    target_link_libraries(DFL ${Boost_LIBRARIES})
-else()
-    message(FATAL_ERROR "Boost not found")
-endif()
+include_directories(${Boost_INCLUDE_DIRS})
 
 # find glog
 find_package(GLOG REQUIRED)

@@ -4,7 +4,6 @@
 #include <iostream>
 #include <glog/logging.h>
 #include <string>
-#include <info_toolkit.hpp>
 #include "measure_time.hpp"
 int main()
 {
@@ -51,13 +50,6 @@ int main()
 	sig.update_text_from_hex();
 	auto res2 = crypto::ecdsa_openssl::verify(sig, digest.getHexMemory(), pubKey);
 	CHECK_EQ(res2, 0) << "pass faild.";
-
-	info_toolkit node(pubKey,prvKey);
-    node.print_pubkey();
-    info_toolkit node2(keypair);
-    node2.print_pubkey();
-    info_toolkit node1;
-    node1.print_pubkey();
 
 
 	return 0;

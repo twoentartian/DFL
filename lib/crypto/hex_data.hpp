@@ -13,13 +13,25 @@ namespace crypto
 	class hex_data
 	{
 	public:
-		hex_data(const std::string& binary_data)
+		hex_data() = default;
+		
+		hex_data(const std::string &binary_data)
+		{
+			assign(binary_data);
+		}
+		
+		hex_data(const uint8_t *data, size_t size)
+		{
+			assign(data, size);
+		}
+		
+		void assign(const std::string &binary_data)
 		{
 			data_str = binary_data;
 			data_memory = ConvertTextToHex(binary_data);
 		}
 		
-		hex_data(const uint8_t* data, size_t size)
+		void assign(const uint8_t *data, size_t size)
 		{
 			data_memory.resize(size);
 			std::memcpy(data_memory.data(), data, size * sizeof(uint8_t));
@@ -27,26 +39,26 @@ namespace crypto
 		}
 		
 		template<typename T>
-		hex_data(const T* data, size_t size) : hex_data(reinterpret_cast<const uint8_t*>(data), size)
+		hex_data(const T *data, size_t size) : hex_data(reinterpret_cast<const uint8_t *>(data), size)
 		{
 			static_assert(sizeof(T) == 1);
-			
 		}
 		
 		template<typename T>
-		hex_data(const std::vector<T>& memory_data) : hex_data(memory_data.data(), memory_data.size())
+		hex_data(const std::vector<T> &memory_data) : hex_data(memory_data.data(), memory_data.size())
 		{
 			static_assert(sizeof(T) == 1);
 		}
 		
 		GENERATE_GET(data_str, getTextStr_uppercase);
+		
 		GENERATE_GET(data_memory, getHexMemory);
 		
 		std::string getTextStr_lowercase() const
 		{
 			std::string output;
 			output.resize(data_str.size());
-			std::transform(data_str.begin(), data_str.end(), output.begin(),[](unsigned char c)
+			std::transform(data_str.begin(), data_str.end(), output.begin(), [](unsigned char c)
 			{
 				return std::tolower(c);
 			});
@@ -63,13 +75,28 @@ namespace crypto
 			data_str = ConvertHexToText(data_memory);
 		}
 		
+		bool is_same(const hex_data& target) const
+		{
+			return data_memory == target.data_memory;
+		}
+		
+		bool operator == (const hex_data& target) const
+		{
+			return is_same(target);
+		}
+		
+		bool operator != (const hex_data& target) const
+		{
+			return !is_same(target);
+		}
+	
 	private:
 		std::string data_str;
 		std::vector<uint8_t> data_memory;
 		
-		std::string ConvertHexToText(const uint8_t* data, size_t length)
+		std::string ConvertHexToText(const uint8_t *data, size_t length)
 		{
-			char* text = new char[length * 2 + 1];
+			char *text = new char[length * 2 + 1];
 			for (uint32_t i = 0; i < length; i++)
 			{
 				text[i * 2] = HexToText(data[i] / 16);
@@ -81,16 +108,16 @@ namespace crypto
 			return str;
 		}
 		
-		std::string ConvertHexToText(const std::vector<uint8_t>& data)
+		std::string ConvertHexToText(const std::vector<uint8_t> &data)
 		{
 			return ConvertHexToText(data.data(), data.size());
 		}
 		
-		std::vector<uint8_t> ConvertTextToHex(const std::string& text)
+		std::vector<uint8_t> ConvertTextToHex(const std::string &text)
 		{
 			std::vector<uint8_t> output;
 			output.reserve(text.size() * 2);
-			for (int8_t loc = 0; loc < text.size(); loc = loc +2)
+			for (int8_t loc = 0; loc < text.size(); loc = loc + 2)
 			{
 				output.push_back(TextToHex(text[loc], text[loc + 1]));
 			}
@@ -118,11 +145,11 @@ namespace crypto
 			{
 				value = inputHigh - 'A' + 10;
 			}
-			else if(inputHigh >= 'a' && inputHigh <= 'z')
+			else if (inputHigh >= 'a' && inputHigh <= 'z')
 			{
 				value = inputHigh - 'a' + 10;
 			}
-			else if(inputHigh >= '0' && inputHigh <= '9')
+			else if (inputHigh >= '0' && inputHigh <= '9')
 			{
 				value = inputHigh - '0';
 			}

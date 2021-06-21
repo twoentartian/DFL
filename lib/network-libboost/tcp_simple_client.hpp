@@ -26,11 +26,11 @@ namespace network::simple
 			return tempClientPtr;
 		}
 		
-		~tcp_client()
+		~tcp_client() noexcept(false)
 		{
 			if (_connected)
 			{
-				//throw an exception here because any invalid use of tcp::tcp_client will cause this exception.
+				//throw an exception here because any false use of tcp::tcp_client will cause this exception.
 				throw std::logic_error("destruct the client while the client is in use"); //Call Disconnect before destruction.
 			}
 			delete[] _buffer;

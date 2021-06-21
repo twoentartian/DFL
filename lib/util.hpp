@@ -58,4 +58,38 @@ namespace util
 	private:
 		T& _value;
 	};
+	
+	std::string get_random_str(int length = 20)
+	{
+		std::string randomStr;
+		std::random_device randomDevice;
+		std::default_random_engine randomEngine(randomDevice());
+		std::uniform_int_distribution<int> distribution(0, 10+26+26-1);
+		
+		for (int i = 0; i < length; i++)
+		{
+			const int tempValue = distribution(randomEngine);
+			if (tempValue < 10)
+			{
+				randomStr.push_back('0' + tempValue);
+				continue;
+			}
+			else if(tempValue < 36)
+			{
+				randomStr.push_back('a' + tempValue-10);
+				continue;
+			}
+			else if (tempValue < 62)
+			{
+				randomStr.push_back('A' + tempValue-36);
+				continue;
+			}
+			else
+			{
+				throw std::logic_error("Impossible path");
+			}
+		}
+		return randomStr;
+	}
+	
 }
