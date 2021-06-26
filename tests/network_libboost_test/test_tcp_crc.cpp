@@ -25,15 +25,30 @@ int main()
         auto bus = bu.getTextStr_lowercase();
         std::string trans_binary_str = serialize_wrap<boost::archive::binary_oarchive>(trans).str();
         auto data = "this is a testing";
-        auto ip = "127.0.0.1";
-        auto port = 88;
-        network::socket_header h(ip, port, network::DATATYPE::hex, data);
-        network::socket_header t(ip, port, network::DATATYPE::transtion_without_hash, buffer.data(), buffer.size());
-        network::socket_header ts(ip, port, network::DATATYPE::transtion_without_hash, trans_binary_str);
+
+        network::socket_header h(network::DATATYPE::hex, data);
+        network::socket_header t(network::DATATYPE::transtion_without_hash, buffer.size());
+        network::socket_header ts(network::DATATYPE::transtion_without_hash, trans_binary_str);
         auto h1 = h.get_header();
         auto h2 = t.get_header();
         auto t2 = ts.get_header();
+        byte_buffer bufferh1;
+        h.get_header_buffer(h1,bufferh1);
+        auto h1_result = network::decode_header(bufferh1.data(),bufferh1.size());
 
+        byte_buffer bufferh2;
+        h.get_header_buffer(h2,bufferh2);
+        auto h2_result = network::decode_header(bufferh2.data(),bufferh2.size());
+        CHECK_EQ(1,h1_result);
+        CHECK_EQ(1,h2_result);
 
+        byte_buffer bufferh3;
+        uint8_t n = 'c';
+        uint8_t m = 'm';
+        bufferh3.add(n);
+        bufferh3.add(m);
+        h.get_header_buffer(h1,bufferh3);
+        auto h3_result = network::decode_header(bufferh3.data(),bufferh3.size());
+        CHECK_EQ(3,h3_result);
     return 0;
 }

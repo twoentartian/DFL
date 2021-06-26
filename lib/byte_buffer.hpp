@@ -101,7 +101,18 @@ public:
 			}
 		}
 	}
-	
+    inline void add(uint16_t value)
+    {
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            _buffer[_loc] = static_cast<uint8_t>((value >> 8 * i) & 0xff);
+            ++_loc;
+            if (_loc == _capacity)
+            {
+                ExtendCapacity();
+            }
+        }
+    }
 	inline void add(int32_t value)
 	{
 		for (uint32_t i = 0; i < 4; i++)
