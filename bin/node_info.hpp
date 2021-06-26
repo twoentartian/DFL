@@ -4,9 +4,10 @@
 #include <chrono>
 #include <string>
 
-#include "hash_interface.hpp"
+#include <hash_interface.hpp>
+#include <json_serialization.hpp>
 
-class node_info : i_hashable
+class node_info : i_hashable, i_json_serialization
 {
 public:
 	std::string node_address;
@@ -16,6 +17,20 @@ public:
 	{
 		target.add(node_address);
 		target.add(node_pubkey);
+	}
+	
+	i_json_serialization::json to_json()
+	{
+		i_json_serialization::json output;
+		output["node_address"] = node_address;
+		output["node_pubkey"] = node_pubkey;
+		return output;
+	}
+	
+	void from_json(const json& json_target)
+	{
+		node_address = json_target["node_address"];
+		node_pubkey = json_target["node_pubkey"];
 	}
 
 private:

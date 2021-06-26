@@ -8,12 +8,14 @@
 #include <crypto.hpp>
 #include <hash_interface.hpp>
 #include <time_util.hpp>
+#include <json_serialization.hpp>
 #include <boost_serialization_wrapper.hpp>
+#include <base64.hpp>
 
 #include "ml_layer.hpp"
 #include "node_info.hpp"
 
-class transaction_without_hash_sig : i_hashable
+class transaction_without_hash_sig : i_hashable, i_json_serialization
 {
 public:
 	using TIME_STAMP_TYPE = uint64_t;
@@ -34,6 +36,31 @@ public:
 		target.add(model_data);
 		target.add(accuracy);
 		target.add(TTL);
+	}
+	
+	i_json_serialization::json to_json()
+	{
+		i_json_serialization::json output;
+		output["creation_time"] = creation_time;
+		output["expire_time"] = expire_time;
+		i_json_serialization::json creator_json = creator.to_json();
+		output["creator"] = creator_json;
+		output["TTL"] = TTL;
+		std::string model_data_base64 = Base64::Encode(model_data);
+		output["model_data"] = model_data_base64;
+		output["accuracy"] = accuracy;
+		
+		return output;
+	}
+	
+	void from_json(const i_json_serialization::json& json_target)
+	{
+		creation_time = json_target["creation_time"];
+		expire_time = json_target["expire_time"];
+		creator.from_json(json_target["creator"]);
+		TTL = json_target["TTL"];
+		Base64::Decode(json_target["model_data"], model_data);
+		accuracy = json_target["accuracy"];
 	}
 
 private:
@@ -56,7 +83,24 @@ public:
 	transaction_without_hash_sig content;
 	std::string hash_sha256;
 	std::string signature;
-
+	
+	i_json_serialization::json to_json()
+	{
+		i_json_serialization::json output;
+		i_json_serialization::json content_json = content.to_json();
+		output["content"] = content_json;
+		output["hash_sha256"] = hash_sha256;
+		output["signature"] = signature;
+		
+		return output;
+	}
+	
+	void from_json(const i_json_serialization::json& json_target)
+	{
+		content.from_json(json_target["content"]);
+		hash_sha256 = json_target["hash_sha256"];
+		signature = json_target["signature"];
+	}
 	
 private:
 	friend class boost::serialization::access;

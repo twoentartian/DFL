@@ -41,11 +41,14 @@ void generate_transaction(const std::vector<Ml::tensor_blob_like<float>>&data, c
 	std::string trans_binary_str = serialize_wrap<boost::archive::binary_oarchive>(trans).str();
 	std::cout << "binary transaction size: " << trans_binary_str.size() << std::endl;
 	
+	std::ofstream temp_output_file("./transaction.json", std::ios::binary);
+	std::string trans_json_str = trans.to_json().dump(4);
+	temp_output_file << trans_json_str;
+	temp_output_file.flush();
+	temp_output_file.close();
+	std::cout << "json transaction size: " << trans_json_str.size() << std::endl;
 	
 	exit_cv.notify_one();
-	
-
-	
 }
 
 int main(int argc, char **argv)
@@ -90,7 +93,7 @@ int main(int argc, char **argv)
 	});
 	uint16_t port = *config.get<uint16_t>("data_storage_service_port");
 	size_t concurrency = *config.get<size_t>("data_storage_service_concurrency");
-	LOG(INFO) << "starting network service for data storage, port: " << port << " concurrency: " << concurrency;
+	LOG(INFO) << "starting network service for data storage, port: " << port << ", concurrency: " << concurrency;
 	main_dataset_storage->start_network_service(port, concurrency);
 	
 	std::cout << "wait for signal to exit" << std::endl;
