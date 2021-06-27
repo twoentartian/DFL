@@ -8,6 +8,7 @@
 #include "network-common/i_p2p_node.hpp"
 #include "tcp_simple_server.hpp"
 #include "tcp_simple_client.hpp"
+#include "../network-common/packet_header.hpp"
 
 namespace network
 {
@@ -109,6 +110,7 @@ namespace network
 					                                 auto reply = _callback(data, length);
 					                                 try
 					                                 {
+					                                 	
 						                                 session_receive->write(reply.data(), reply.size());
 					                                 }
 					                                 catch (...)
