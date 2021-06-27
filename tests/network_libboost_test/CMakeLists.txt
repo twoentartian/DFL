@@ -15,6 +15,5 @@ target_link_libraries(TEST_boost_udp_sample_server "${Boost_LIBRARIES}" -pthread
 add_executable(TEST_network_libboost_p2p test_network_libboost_p2p.cpp)
 target_link_libraries(TEST_network_libboost_p2p "${Boost_LIBRARIES}" "${GLOG_LIBRARY}" -pthread)
 
-
-add_executable(TEST_network_libboost_crc test_tcp_crc.cpp)
+add_executable(TEST_network_libboost_crc test_network_libboost_crc_packet.cpp)
 target_link_libraries(TEST_network_libboost_crc caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}" "${OPENSSL_CRYPTO_LIBRARY}"  -pthread )
