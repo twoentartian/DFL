@@ -42,7 +42,6 @@ namespace network::simple
 			delete[] _buffer;
 		}
 		
-		
 		tcp_status write(const char *data, uint32_t length)
 		{
 			return write(reinterpret_cast<const uint8_t *>(data), length);
@@ -112,10 +111,11 @@ namespace network::simple
 		{
 			return _port;
 		}
-		
+	
 	private:
 		friend class tcp_server;
-		
+	
+	protected:
 		std::string _ip;
 		uint16_t _port;
 		std::shared_ptr<boost::asio::ip::tcp::socket> _socket;
@@ -314,7 +314,7 @@ namespace network::simple
 			return _sessionMap;
 		}
 	
-	private:
+	protected:
 		RWLock _lock_acceptor_thread_container;
 		std::vector<std::thread> _acceptor_thread_container;
 		std::shared_ptr<boost::asio::io_service> _io_service;
@@ -335,7 +335,7 @@ namespace network::simple
 			_acceptor->async_accept(*socket_ptr, boost::bind(&tcp_server::accept_handler, this, socket_ptr, boost::asio::placeholders::error));
 		}
 		
-		void accept_handler(const std::shared_ptr<boost::asio::ip::tcp::socket> &socket_ptr, const boost::system::error_code &ec)
+		virtual void accept_handler(const std::shared_ptr<boost::asio::ip::tcp::socket> &socket_ptr, const boost::system::error_code &ec)
 		{
 			accept();
 			if (!ec)
@@ -359,7 +359,7 @@ namespace network::simple
 				                               {
 					                               //Session control
 					                               lock_guard_write lgd_wsc(_lockSessionMap);
-					                               const auto result = _sessionMap.find(session->_ip + ":" + std::to_string(session->_port));
+					                               const auto result = _sessionMap.find(session->ip() + ":" + std::to_string(session->port()));
 					                               if (result == _sessionMap.end())
 					                               {
 						                               throw std::logic_error("item should be here but it does not");

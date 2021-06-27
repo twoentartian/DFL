@@ -17,8 +17,10 @@ namespace network
 {
 	struct header
 	{
+		using COMMAND_TYPE = uint16_t;
+		
 		uint32_t data_length;   //4 byte
-		uint32_t command_type;  //4 byte
+		COMMAND_TYPE command_type;  //4 byte
 		uint64_t reserved0;     //8 byte
 		uint16_t crc;       //crc must be the last var in header
 	};
@@ -42,14 +44,14 @@ namespace network
 			for (unsigned char & i : header_part.raw_byte){i = 0;}
 		}
 		
-		packet_header(uint16_t type, size_t data_size) : packet_header()
+		packet_header(header::COMMAND_TYPE type, size_t data_size) : packet_header()
 		{
 			header_part.content.command_type = type;//H.data_CRC = GetCrc16_data(data,data_size);
 			header_part.content.data_length = data_size;
 			header_part.content.crc = calculate_crc16_header();
 		};
 		
-		packet_header(uint16_t type, const std::string& data) : packet_header(type, data.length())
+		packet_header(header::COMMAND_TYPE type, const std::string& data) : packet_header(type, data.length())
 		{
 		
 		};
@@ -89,7 +91,7 @@ namespace network
 	class header_decoder
 	{
 	public:
-		using ReceivePacketCallback = std::function<void(uint16_t command, std::shared_ptr<std::string>)>;
+		using ReceivePacketCallback = std::function<void(header::COMMAND_TYPE command, std::shared_ptr<std::string>)>;
 
 		header_decoder() : _packet_ongoing(false)
 		{
@@ -111,7 +113,6 @@ namespace network
 				}
 				return;
 			}
-
 			
 			//process header
 			packet_header socket_header(data);
@@ -132,8 +133,21 @@ namespace network
 			}
 			if (_packet_ongoing)
 			{
-				LOG(WARNING) << "[network] packet ends in advance";
+				//it might be a header, or an ongoing packet(crc == data by chance)
+				if (length <= _remain_length)
+				{
+					//an ongoing packet
+					add_data_to_buffer(data, length);
+					return;
+				}
+				else
+				{
+					//definitely new header
+					LOG(WARNING) << "[network] packet ends in advance";
+				}
 			}
+			
+			//new packet header
 			_buffer.reset(new std::string());
 			_current_command = header.command_type;
 			_remain_length = header.data_length;
@@ -146,6 +160,11 @@ namespace network
 		void receive_data(const std::string& data)
 		{
 			receive_data(reinterpret_cast<const uint8_t*>(data.data()), data.length());
+		}
+		
+		void receive_data(const char* data, size_t length)
+		{
+			receive_data(reinterpret_cast<const uint8_t*>(data), length);
 		}
 		
 		void set_receive_callback(ReceivePacketCallback cb)

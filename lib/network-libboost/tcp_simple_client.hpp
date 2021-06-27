@@ -139,16 +139,6 @@ namespace network::simple
 			return _connecting;
 		}
 		
-		[[nodiscard]] bool isSending() const
-		{
-			return _sending;
-		}
-		
-		[[nodiscard]] bool isReceiving() const
-		{
-			return _receiving;
-		}
-		
 		void SetReceiveHandler(ReceiveHandlerType handler)
 		{
 			_receiveHandlers.push_back(handler);
@@ -180,7 +170,7 @@ namespace network::simple
 			}
 		}
 	
-	private:
+	protected:
 		static std::vector<std::thread> _client_thread_container;
 		static std::shared_ptr<boost::asio::io_service> _io_service;
 		static size_t _worker;
@@ -192,14 +182,12 @@ namespace network::simple
 		std::vector<ConnectHandlerType> _connectHandlers;
 		std::atomic<bool> _connected;
 		std::atomic<bool> _connecting;
-		std::atomic<bool> _sending;
-		std::atomic<bool> _receiving;
 		char* _buffer;
 		std::string _ip;
 		uint16_t _port;
 		std::mutex _writer_locker;
 		
-		explicit tcp_client(bool lastTarget = false) : _connected(false), _connecting(false), _sending(false), _receiving(false), _buffer(nullptr)
+		explicit tcp_client(bool lastTarget = false) : _connected(false), _connecting(false), _buffer(nullptr)
 		{
 			++_instanceCounter;
 			if (lastTarget)
@@ -277,7 +265,7 @@ namespace network::simple
 			do_read();
 		}
 		
-		void do_read()
+		virtual void do_read()
 		{
 			_socket->async_read_some(boost::asio::buffer(_buffer, BUFFER_SIZE), [this](const boost::system::error_code &ec, size_t received_length)
 			{

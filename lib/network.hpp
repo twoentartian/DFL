@@ -33,6 +33,8 @@
 #include "network-libboost/udp.hpp"
 #include "network-libboost/tcp_simple_server.hpp"
 #include "network-libboost/tcp_simple_client.hpp"
+#include "network-libboost/tcp_simple_server_with_header.hpp"
+#include "network-libboost/tcp_simple_client_with_header.hpp"
 #endif
 
 #undef NETWORK_USE_LIBUV
