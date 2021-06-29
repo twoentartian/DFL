@@ -156,7 +156,14 @@ namespace network::simple
 			{
 				return;
 			}
-			_socket->shutdown(boost::asio::socket_base::shutdown_both);
+			try
+			{
+				_socket->shutdown(boost::asio::socket_base::shutdown_both);
+			}
+			catch (...)
+			{
+			
+			}
 			_socket->close();
 			
 			auto self(shared_from_this());

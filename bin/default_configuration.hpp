@@ -1,6 +1,8 @@
 #pragma once
 
+#include <tuple>
 #include <configure_file.hpp>
+#include "global_types.hpp"
 
 configuration_file::json get_default_configuration()
 {
@@ -15,6 +17,12 @@ configuration_file::json get_default_configuration()
 	output["data_storage_service_concurrency"] = 2;
 	output["data_storage_db_path"] = "./dataset_db";
 	output["data_storage_trigger_training_size"] = 64; // must be equal to the batch size of the model
+	
+	output["network"]["port"] = 8000;
+	peer_enpoint item0 = {"127.0.0.1", 8000};
+	peer_enpoint item1 = {"127.0.0.1", 8001};
+	std::vector<configuration_file::json> peers = {item0.to_json(), item1.to_json()};
+	output["network"]["peers"] = peers;
 	
 	return output;
 }

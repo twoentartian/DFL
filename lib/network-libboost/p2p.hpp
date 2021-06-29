@@ -8,7 +8,6 @@
 #include "network-common/i_p2p_node.hpp"
 #include "tcp_simple_server.hpp"
 #include "tcp_simple_client.hpp"
-#include "../network-common/packet_header.hpp"
 
 namespace network
 {
@@ -132,7 +131,7 @@ namespace network
 		
 		void start_service(uint16_t port) override
 		{
-			start_service(port, 4);
+			start_service(port, 2);
 		}
 		
 		void stop_service() override

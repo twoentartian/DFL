@@ -197,9 +197,9 @@ public:
 		random_index.resize(size);
 		std::random_device dev;
 		std::mt19937 rng(dev());
+		std::uniform_int_distribution<int> distribution(0, total_size - 1);
 		for (int i = 0; i < random_index.size(); ++i)
 		{
-			std::uniform_int_distribution<int> distribution(0, total_size - 1);
 			random_index[i] = distribution(rng);
 		}
 		std::vector<int> label_start_loc(label_size.size());
@@ -215,20 +215,31 @@ public:
 		//insert data
 		for (auto &&random_number: random_index)
 		{
-			int label_index = label_start_loc.size() - 1;
-			for (int i = 1; i < label_start_loc.size(); ++i)
+			std::string value;
+			std::string key;
+			while(true)
 			{
-				if (random_number < label_start_loc[i])
+				int label_index = label_start_loc.size() - 1;
+				for (int i = 1; i < label_start_loc.size(); ++i)
 				{
-					label_index = i - 1;
+					if (random_number < label_start_loc[i])
+					{
+						label_index = i - 1;
+						break;
+					}
+				}
+				key = label_str[label_index] + "-" + std::to_string(random_number - label_start_loc[label_index]);
+				rocksdb::Status status = _db->Get(rocksdb::ReadOptions(), key, &value);
+				if(status.ok())
+				{
 					break;
 				}
+				else
+				{
+					random_number = distribution(rng);
+				}
 			}
-			std::string key = label_str[label_index] + "-" + std::to_string(random_number - label_start_loc[label_index]);
-			std::string value;
-			
-			rocksdb::Status status = _db->Get(rocksdb::ReadOptions(), key, &value);
-			CHECK(status.ok()) << "[dataset_storage] unable to find data with key " << key << ", possibly corrupted db";
+
 			dataset_content<DType> target;
 			try
 			{

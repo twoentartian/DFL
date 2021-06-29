@@ -22,3 +22,6 @@ target_link_libraries(TEST_Caffe_mutual_train_non_iid_fedavg caffe caffeproto "$
 
 add_executable(TEST_Caffe_mutual_train_malicious_node mutual_train_demo_malicious_node.cpp)
 target_link_libraries(TEST_Caffe_mutual_train_malicious_node caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")
+
+add_executable(TEST_Caffe_tyd_casual single_train_tyd_casual_test.cpp)
+target_link_libraries(TEST_Caffe_tyd_casual caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")

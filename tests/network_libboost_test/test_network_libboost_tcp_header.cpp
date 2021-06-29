@@ -18,7 +18,7 @@ int main()
 		                        std::cout << "[server] accept: " << ip << ":" << port << std::endl;
 		                        temp1++;
 	                        });
-	server.SetReceiveHandler_with_header([&cout_lock](header::COMMAND_TYPE command, std::shared_ptr<std::string> data, std::shared_ptr<simple::tcp_session_with_header> session_receive)
+	server.SetSessionReceiveHandler_with_header([&cout_lock](header::COMMAND_TYPE command, std::shared_ptr<std::string> data, std::shared_ptr<simple::tcp_session_with_header> session_receive)
 	                                     {
 		                                     temp2++;
 		                                     std::lock_guard<std::recursive_mutex> temp_lock_guard(cout_lock);

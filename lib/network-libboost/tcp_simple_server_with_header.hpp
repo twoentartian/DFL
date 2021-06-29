@@ -64,7 +64,7 @@ namespace network::simple
 	class tcp_server_with_header : public tcp_server
 	{
 	public:
-		void SetReceiveHandler_with_header(const tcp_session_with_header::ReceiveHandlerType_with_header &handler)
+		void SetSessionReceiveHandler_with_header(const tcp_session_with_header::ReceiveHandlerType_with_header &handler)
 		{
 			_receiveHandlers_with_header.push_back(handler);
 		}

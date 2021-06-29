@@ -115,6 +115,11 @@ public:
 		}
 		return {output};
 	}
+	
+	json& get_json()
+	{
+		return _currentConfiguration;
+	}
 
 private:
 	std::string _current_configuration_path;

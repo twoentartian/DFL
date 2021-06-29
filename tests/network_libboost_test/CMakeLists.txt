@@ -20,3 +20,6 @@ target_link_libraries(TEST_network_libboost_crc caffe caffeproto "${GLOG_LIBRARY
 
 add_executable(TEST_network_libboost_header test_network_libboost_tcp_header.cpp)
 target_link_libraries(TEST_network_libboost_header "${Boost_LIBRARIES}" "${GLOG_LIBRARY}" -pthread)
+
+add_executable(TEST_network_libboost_p2p_header test_network_libboost_p2p_with_header.cpp)
+target_link_libraries(TEST_network_libboost_p2p_header "${Boost_LIBRARIES}" "${GLOG_LIBRARY}" -pthread)

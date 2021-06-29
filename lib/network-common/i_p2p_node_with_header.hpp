@@ -6,7 +6,7 @@
 
 namespace network
 {
-	class i_p2p_node
+	class i_p2p_node_with_header
 	{
 	public:
 		enum send_packet_status
@@ -38,11 +38,11 @@ namespace network
 		};
 		
 		using send_callback = std::function<void(send_packet_status, const char* data, int length)>;
-		using receive_callback = std::function<std::string(const char* data, int length)>;
+		using receive_callback = std::function<std::tuple<header::COMMAND_TYPE, std::string>(header::COMMAND_TYPE command, const char *data, int length)>;
 		
-		virtual void send(const std::string &ip, uint16_t port, address_type type, const char* data, size_t size, send_callback callback) = 0;
+		virtual void send(const std::string &ip, uint16_t port, i_p2p_node_with_header::address_type type, header::COMMAND_TYPE command, const char *data, size_t size, send_callback callback) = 0;
 		
-		virtual void send(const std::string& ip, uint16_t port, address_type type, const uint8_t* data, size_t size, send_callback callback) = 0;
+		virtual void send(const std::string &ip, uint16_t port, i_p2p_node_with_header::address_type type, header::COMMAND_TYPE command, const uint8_t *data, size_t size, send_callback callback) = 0;
 		
 		virtual void start_service(uint16_t port) = 0;
 		
@@ -55,4 +55,5 @@ namespace network
 		
 		virtual void set_receive_callback(receive_callback callback) = 0;
 	};
+	
 }
