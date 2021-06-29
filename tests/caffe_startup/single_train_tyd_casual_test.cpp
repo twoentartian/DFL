@@ -48,13 +48,30 @@
 
 #include <util.hpp>
 
+//return <max, min>
+template<typename T>
+std::tuple<T, T> find_max_min(T* data, size_t size)
+{
+	T max, min;
+	max=*data;min=*data;
+	for (int i = 0; i < size; ++i)
+	{
+		if (data[i] > max) max = data[i];
+		if (data[i] < min) min = data[i];
+	}
+	return {max,min};
+}
+
 int main(int argc, char *argv[])
 {
+	google::InitGoogleLogging(argv[0]);
+	
 	constexpr int NUMBER_NODES = 1;
-	constexpr int MAX_ITER = 1000;
+	constexpr int MAX_ITER = 70;
 	constexpr int TRAIN_BATCH_SIZE = 64; //this must a multiple of batch_size, it will be divided into many smaller batch automatically
-	constexpr int TEST_ITER = 10;
+	constexpr int TEST_ITER = 3;
 	constexpr int TEST_BATCH_SIZE = 100;
+	constexpr float filter_limit = 0.8; // 0 to drop all data, 1 to stop dropping
 	
 	const std::string solver_path = "../../../dataset/MNIST/lenet_solver_memory.prototxt";
 	
@@ -85,22 +102,70 @@ int main(int argc, char *argv[])
 			Ml::tensor_blob_like<float> label;
 			label.getShape() = {1};
 			label.getData() = {float (0)};
-			auto [train_data_0, train_label_0] = train_dataset.get_random_data_by_Label(label, TRAIN_BATCH_SIZE);
-			models[node_index].train(train_data_0,train_label_0);
+			//auto [train_data, train_label] = train_dataset.get_random_data_by_Label(label, TRAIN_BATCH_SIZE);
+			auto [train_data, train_label] = train_dataset.get_random_data(TRAIN_BATCH_SIZE);
+			auto parameter_before = models[node_index].get_parameter();
+			models[node_index].train(train_data,train_label);
+			auto parameter_after = models[node_index].get_parameter();
+			auto parameter_diff = parameter_after - parameter_before;
 			
-			auto [train_data_random, train_label_random] = train_dataset.get_random_data(TRAIN_BATCH_SIZE);
-			models[node_index].train(train_data_random,train_label_random);
+			auto& layers = parameter_diff.getLayers();
 			
+			//drop models
+			for (int i = 0; i < layers.size(); ++i)
+			{
+				auto& blob = layers[i].getBlob_p();
+				auto& blob_data = blob->getData();
+				if (blob_data.size() == 0)
+				{
+					continue;
+				}
+				auto [max, min] = find_max_min(blob_data.data(), blob_data.size());
+				auto range = max - min;
+				auto lower_bound = min + range * filter_limit * 0.5;
+				auto higher_bound = max - range * filter_limit * 0.5;
+				
+				int drop_count = 0;
+				for (auto&& data: blob_data)
+				{
+					if(data < higher_bound && data > lower_bound)
+					{
+						//drop
+						drop_count++;
+						data = 0;
+					}
+				}
+				
+				std::cout << "node:" << node_index << "    iter:" << iter << "    layer:" << i << "    drop:" << ((float)drop_count)/blob_data.size() << std::endl;
+			}
+			auto parameter_new = parameter_diff + parameter_before;
+			models[node_index].set_parameter(parameter_new);
+			
+			//output layers
+			for (int i = 0; i < layers.size(); ++i)
+			{
+				auto blob = layers[i].getBlob_p();
+				std::ofstream output_file("node" + std::to_string(node_index) + "blob" + std::to_string(i) + "iter" + std::to_string(iter), std::ios::binary);
+
+				auto blob_data = blob->getData();
+				for (int data_index = 0; data_index < blob_data.size(); ++data_index)
+				{
+					output_file << std::to_string(data_index) << " " << std::to_string(blob_data[data_index]) << std::endl;
+				}
+				output_file.flush();
+				output_file.close();
+			}
+
 			//test
 			if (iter % TEST_ITER == 0)
 			{
-				auto [test_data, test_label] = test_dataset.get_random_data_by_Label(label, TEST_BATCH_SIZE);
-				float accuracy = models[node_index].evaluation(test_data, test_label);
-				
-//				auto [test_data_random, test_label_random] = test_dataset.get_random_data(TEST_BATCH_SIZE);
-//				float accuracy = models[node_index].evaluation(test_data_random, test_label_random);
-				
-				std::cout << boost::format("iter: %1% node:%2% accuracy: %3%") % models[node_index].get_iter() % node_index % accuracy << std::endl;
+//				auto [test_data, test_label] = test_dataset.get_random_data_by_Label(label, TEST_BATCH_SIZE);
+//				float accuracy = models[node_index].evaluation(test_data, test_label);
+
+				auto [test_data_random, test_label_random] = test_dataset.get_random_data(TEST_BATCH_SIZE);
+				float accuracy = models[node_index].evaluation(test_data_random, test_label_random);
+
+				std::cout << boost::format("iter: %1% node:%2% accuracy: %3%") % iter % node_index % accuracy << std::endl;
 				if (accuracy > 0.995) exit = true;
 			}
 			
@@ -110,20 +175,24 @@ int main(int argc, char *argv[])
 		if (exit) break;
 	}
 	
-	for (int node_index = 0; node_index < NUMBER_NODES; ++node_index)
-	{
-		auto parameter = models[node_index].get_parameter();
-		auto layers = parameter.getLayers();
-		for (int i = 0; i < layers.size(); ++i)
-		{
-			auto blob = layers[i].getBlob_p();
-			std::ofstream output_file("node" + std::to_string(node_index) + "blob" + std::to_string(i), std::ios::binary);
-			
-			output_file <<
-			
-		}
-		
-	}
+//	for (int node_index = 0; node_index < NUMBER_NODES; ++node_index)
+//	{
+//		auto parameter = models[node_index].get_parameter();
+//		auto layers = parameter.getLayers();
+//		for (int i = 0; i < layers.size(); ++i)
+//		{
+//			auto blob = layers[i].getBlob_p();
+//			std::ofstream output_file("node" + std::to_string(node_index) + "blob" + std::to_string(i), std::ios::binary);
+//
+//			auto blob_data = blob->getData();
+//			for (int data_index = 0; data_index < blob_data.size(); ++data_index)
+//			{
+//				output_file << std::to_string(data_index) << " "<< std::to_string(blob_data[data_index]) << std::endl;
+//			}
+//			output_file.flush();
+//			output_file.close();
+//		}
+//	}
 	
 	
 }
