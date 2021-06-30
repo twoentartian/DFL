@@ -536,3 +536,4 @@ MigrationBackup/
 .ionide/
 
 # End of https://www.toptal.com/developers/gitignore/api/clion,visualstudio,visualstudiocode,clion+all
+/py_tool/test_data/
