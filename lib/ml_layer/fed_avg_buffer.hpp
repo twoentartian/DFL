@@ -10,23 +10,23 @@
 
 namespace Ml
 {
-	template <typename T, size_t size>
+	template <typename T>
 	class fed_avg_buffer
 	{
 	public:
-		fed_avg_buffer()
+		fed_avg_buffer(size_t size) : _size(size)
 		{
-			_data.resize(size);
+			_data.resize(_size);
 			_current_write_loc = 0;
 			_current_size = 0;
 		}
 		
-		void write(const T& target)
+		void add(const T& target)
 		{
 			_data[_current_write_loc] = target;
 			move_to_next(_current_write_loc);
 			
-			if (_current_size != size) _current_size++;
+			if (_current_size != _size) _current_size++;
 		}
 		
 		T average()
@@ -48,11 +48,12 @@ namespace Ml
 		std::vector<T> _data;
 		size_t _current_write_loc;
 		size_t _current_size;
+		size_t _size;
 		
 		void move_to_next(size_t& value)
 		{
 			value++;
-			if (value == size)
+			if (value == _size)
 			{
 				//reach the end of ring buffer
 				value = 0;

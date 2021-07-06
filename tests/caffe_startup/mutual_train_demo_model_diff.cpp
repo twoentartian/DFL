@@ -66,10 +66,10 @@ int main(int argc, char *argv[])
 {
 	google::InitGoogleLogging(argv[0]);
 	
-	constexpr int NUMBER_NODES = 10;
+	constexpr int NUMBER_NODES = 2;
 	constexpr int MAX_ITER = 100;
 	constexpr int TRAIN_BATCH_SIZE = 64; //this must a multiple of batch_size, it will be divided into many smaller batch automatically
-	constexpr int TEST_ITER = 3;
+	constexpr int TEST_ITER = 10;
 	constexpr int TEST_BATCH_SIZE = 100;
 	constexpr float filter_limit = 0.5; // 0 to drop all data, 1 to stop dropping
 	constexpr bool record_layer_to_file = false;

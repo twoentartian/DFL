@@ -11,7 +11,6 @@
 #include "command_allocation.hpp"
 #include "std_output.hpp"
 
-
 class transaction_tran_rece
 {
 public:
@@ -41,12 +40,23 @@ public:
 				{
 					return {command::acknowledge_but_not_accepted, "cannot parse packet data"};
 				}
-				for (auto&& cb : _receive_transaction_callbacks)
-				{
-					cb(trans);
-				}
+				std::thread temp_thread([this, trans](){
+					for (auto&& cb : _receive_transaction_callbacks)
+					{
+						cb(trans);
+					}
+				});
+				temp_thread.detach();
+				
 				return {command::acknowledge, ""};
 			}
+			
+			else
+			{
+				LOG(WARNING) << "[p2p] unknown command";
+				return {command::unknown, ""};
+			}
+			
 		});
 	}
 	
@@ -66,7 +76,7 @@ public:
 			using namespace network;
 			_p2p.send(peer.address, peer.port, i_p2p_node_with_header::ipv4, command::transaction, trans_binary_str.data(), trans_binary_str.length(), [trans_hash, peer](i_p2p_node_with_header::send_packet_status status, const char* data, int length){
 				std::stringstream ss;
-				ss << "transaction with hash " << trans_hash << " to " << peer.to_string() << ", send status: " << i_p2p_node_with_header::send_packet_status_message[status];
+				ss << "send transaction with hash " << trans_hash << " to " << peer.to_string() << ", send status: " << i_p2p_node_with_header::send_packet_status_message[status];
 				auto ss_str = ss.str();
 				LOG(INFO) << ss_str;
 				std_cout::println(ss_str);

@@ -1,4 +1,4 @@
-
+#pragma once
 #ifndef C_TENSOR_BLOB_LIKE_H
 #define C_TENSOR_BLOB_LIKE_H
 
@@ -54,7 +54,7 @@ namespace Ml {
 	
 	    bool operator != (const tensor_blob_like& target) const
 	    {
-		    return !(*this == target);
+		    return !((target._shape == this->_shape) && (target._data == this->_data));
 	    }
 	
 	    tensor_blob_like<DType> operator+(const tensor_blob_like<DType>& target) const
@@ -100,10 +100,8 @@ namespace Ml {
             return _data.empty();
         }
 
-        GENERATE_GET(_shape, getShape
-        );
-        GENERATE_GET(_data, getData
-        );
+        GENERATE_GET(_shape, getShape);
+        GENERATE_GET(_data, getData);
 	    
         void swap(tensor_blob_like& target)
         {
@@ -136,7 +134,24 @@ namespace Ml {
         std::vector<int> _shape;
         std::vector<DType> _data;
     };
-
+	
+	struct tensor_blob_like_hasher
+	{
+		std::size_t operator()(const Ml::tensor_blob_like<float>& k) const
+		{
+			using std::string;
+			std::string str = k.get_str();
+			return std::hash<string>()(str);
+		}
+		
+		std::size_t operator()(const Ml::tensor_blob_like<double>& k) const
+		{
+			using std::string;
+			std::string str = k.get_str();
+			return std::hash<string>()(str);
+		}
+	};
+ 
 }
 
 #endif

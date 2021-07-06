@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
@@ -94,6 +95,7 @@ namespace Ml
 		
 		void load_caffe_model(const std::string& proto_file_path)
 		{
+			std::lock_guard guard(_model_lock);
 			caffe::SolverParameter solver_param;
 			if (!caffe::ReadProtoFromTextFile(proto_file_path.c_str(), &solver_param))
 			{
@@ -105,11 +107,13 @@ namespace Ml
 		
 		void train(const std::vector<tensor_blob_like<DType>>& data, const std::vector<tensor_blob_like<DType>>& label, bool display = true) override
 		{
+			std::lock_guard guard(_model_lock);
 			_caffe_solver->TrainDataset(data, label, display);
 		}
 		
 		DType evaluation(const std::vector<tensor_blob_like<DType>>& data, const std::vector<tensor_blob_like<DType>>& label) override
 		{
+			std::lock_guard guard(_model_lock);
 			std::vector<std::tuple<DType,DType>> results = _caffe_solver->TestDataset(data, label);
 			DType output_accuracy = 0;
 			for (int i = 0; i < results.size(); ++i)
@@ -162,6 +166,7 @@ namespace Ml
 		
 		void set_parameter(caffe_parameter_net<DType>& parameter)
 		{
+			std::lock_guard guard(_model_lock);
 			parameter.toNet(*getNet());
 		}
 		
@@ -187,5 +192,6 @@ namespace Ml
 		
 		//boost::shared_ptr<caffe::Solver<DType>> _caffe_solver;
 		boost::shared_ptr<Ml::caffe_solver_ext<DType, SolverType>> _caffe_solver;
+		std::mutex _model_lock;
 	};
 }

@@ -28,7 +28,7 @@ public:
 	std::string model_data;
 	std::string accuracy;
 	
-	void to_byte_buffer(byte_buffer& target)
+	void to_byte_buffer(byte_buffer& target) const
 	{
 		target.add(creation_time);
 		target.add(expire_time);
@@ -38,7 +38,7 @@ public:
 		target.add(ttl);
 	}
 	
-	i_json_serialization::json to_json()
+	i_json_serialization::json to_json() const
 	{
 		i_json_serialization::json output;
 		output["creation_time"] = creation_time;
@@ -83,24 +83,27 @@ public:
 	TIME_STAMP_TYPE creation_time;
 	node_info creator;
 	std::string accuracy;
+	std::string transaction_hash;
 	int receive_at_ttl;
 	
 public:
-	void to_byte_buffer(byte_buffer& target)
+	void to_byte_buffer(byte_buffer& target) const
 	{
 		target.add(creation_time);
 		creator.to_byte_buffer(target);
 		target.add(accuracy);
 		target.add(receive_at_ttl);
+		target.add(transaction_hash);
 	}
 	
-	i_json_serialization::json to_json()
+	i_json_serialization::json to_json() const
 	{
 		i_json_serialization::json output;
 		output["creation_time"] = creation_time;
 		output["creator"] = creator.to_json();
 		output["accuracy"] = accuracy;
 		output["receive_at_ttl"] = receive_at_ttl;
+		output["transaction_hash"] = transaction_hash;
 		
 		return output;
 	}
@@ -111,6 +114,7 @@ public:
 		creator.from_json(json_target["creator"]);
 		accuracy = json_target["accuracy"];
 		receive_at_ttl = json_target["receive_at_ttl"];
+		transaction_hash = json_target["transaction_hash"];
 	}
 	
 private:
@@ -122,6 +126,7 @@ private:
 		ar & creator;
 		ar & accuracy;
 		ar & receive_at_ttl;
+		ar & transaction_hash;
 	}
 };
 
@@ -133,14 +138,14 @@ public:
 	std::string signature;
 
 public:
-	void to_byte_buffer(byte_buffer& target)
+	void to_byte_buffer(byte_buffer& target) const
 	{
 		content.to_byte_buffer(target);
 		target.add(hash_sha256);
 		target.add(signature);
 	}
 	
-	i_json_serialization::json to_json()
+	i_json_serialization::json to_json() const
 	{
 		i_json_serialization::json output;
 		output["content"] = content.to_json();
@@ -155,6 +160,7 @@ public:
 		content.from_json(json_target["content"]);
 		hash_sha256 = json_target["hash_sha256"];
 		signature = json_target["signature"];
+		
 	}
 
 private:
@@ -177,7 +183,7 @@ public:
 	std::vector<transaction_receipt> receipts;
 
 public:
-	i_json_serialization::json to_json()
+	i_json_serialization::json to_json() const
 	{
 		i_json_serialization::json output;
 		i_json_serialization::json content_json = content.to_json();
@@ -281,4 +287,17 @@ private:
 	crypto::hex_data _private_key;
 	crypto::hex_data _public_key;
 	crypto::hex_data _address;
+};
+
+class transaction_helper
+{
+public:
+	static void save_to_file(const transaction& trans, const std::string& path)
+	{
+		auto json = trans.to_json();
+		std::ofstream file(path, std::ios::binary);
+		file << json.dump(4);
+		file.flush();
+		file.close();
+	}
 };

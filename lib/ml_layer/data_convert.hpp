@@ -10,11 +10,31 @@
 #include <unordered_map>
 #include <glog/logging.h>
 
+#include <boost_serialization_wrapper.hpp>
 #include "tensor_blob_like.hpp"
 #include "exception.hpp"
 #include "util.hpp"
 
 namespace Ml{
+	template <typename DType>
+	class non_iid_distribution
+	{
+	public:
+		void add_distribution(const tensor_blob_like<DType>& label, float weight)
+		{
+			std::string label_str = serialize_wrap<boost::archive::binary_oarchive>(label).str();
+			_distribution[label_str] = weight;
+		}
+		
+		const std::unordered_map<std::string, float>& get() const
+		{
+			return _distribution;
+		}
+		
+	private:
+		std::unordered_map<std::string, float> _distribution;
+	};
+	
     template <typename DType>
     class data_converter
     {
@@ -101,19 +121,7 @@ namespace Ml{
         //return: <data,label>
         std::tuple<std::vector<tensor_blob_like<DType>>, std::vector<tensor_blob_like<DType>>> get_random_data(int size)
         {
-        	const int& total_size = _data.size();
-	        std::vector<tensor_blob_like<DType>> data,label;
-	        data.resize(size);label.resize(size);
-	        for (int i = 0; i < size; ++i)
-	        {
-		        std::random_device dev;
-		        std::mt19937 rng(dev());
-		        std::uniform_int_distribution<int> distribution(0,total_size-1);
-		        int dice = distribution(rng);
-		        data[i] = _data[dice];
-		        label[i] = _label[dice];
-	        }
-	        return {data,label};
+	        return _get_random_data(size, _data, _label);
         }
 	
 	    //return: <data,label>
@@ -140,13 +148,53 @@ namespace Ml{
 		    }
 		    return {data,label};
 	    }
+	
+	    //please ensure the dataset is larger than the size*100 to ensure the best randomness.
+	    //return: <data,label>
+	    std::tuple<std::vector<tensor_blob_like<DType>>, std::vector<tensor_blob_like<DType>>> get_random_non_iid_dataset(const non_iid_distribution<DType>& distribution, int size, int enlargement_factor = 100)
+	    {
+        	float total_weight = 0.0;
+        	auto& distribution_map = distribution.get();
+		    for (auto iter = distribution_map.begin(); iter != distribution_map.end() ; iter++)
+		    {
+			    total_weight += iter->second;
+		    }
+		    std::vector<tensor_blob_like<DType>> data_pool, label_pool;
+		    for (auto iter = distribution_map.begin(); iter != distribution_map.end() ; iter++)
+		    {
+		    	tensor_blob_like<DType> label_blob;
+			    label_blob = deserialize_wrap<boost::archive::binary_iarchive, tensor_blob_like<DType>>(iter->first);
+			    auto [data,label] = get_random_data_by_Label(label_blob, iter->second / total_weight * size * enlargement_factor);
+			    data_pool.insert(data_pool.end(), data.begin(), data.end());
+			    label_pool.insert(label_pool.end(), label.begin(), label.end());
+		    }
+		    return _get_random_data(size, data_pool, label_pool);
+	    }
         
     private:
         std::vector<tensor_blob_like<DType>> _data;
         std::vector<tensor_blob_like<DType>> _label;
 	
         std::unordered_map<std::string, std::vector<tensor_blob_like<DType>>> _container_by_label;
-        
+	
+	    //return: <data,label>
+	    std::tuple<std::vector<tensor_blob_like<DType>>, std::vector<tensor_blob_like<DType>>> _get_random_data(int size, const std::vector<tensor_blob_like<DType>>& data_pool, const std::vector<tensor_blob_like<DType>>& label_pool)
+	    {
+		    const int& total_size = data_pool.size();
+		    std::vector<tensor_blob_like<DType>> data,label;
+		    data.resize(size);label.resize(size);
+		    for (int i = 0; i < size; ++i)
+		    {
+			    std::random_device dev;
+			    std::mt19937 rng(dev());
+			    std::uniform_int_distribution<int> distribution(0,total_size-1);
+			    int dice = distribution(rng);
+			    data[i] = data_pool[dice];
+			    label[i] = label_pool[dice];
+		    }
+		    return {data,label};
+	    }
+     
 	    static uint32_t swap_endian(uint32_t val)
 	    {
 		    val = ((val << 8) & 0xFF00FF00) | ((val >> 8) & 0xFF00FF);

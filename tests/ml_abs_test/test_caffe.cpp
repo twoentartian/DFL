@@ -122,16 +122,16 @@ BOOST_AUTO_TEST_CASE (fed_avg_buffer)
 	Ml::caffe_parameter_net<float> parameter = model1.get_parameter();
 	
 	Ml::fed_avg_buffer<Ml::caffe_parameter_net<float>, 6> parameter_buffer;
-	parameter_buffer.write(parameter);
-	parameter_buffer.write(parameter);
+	parameter_buffer.add(parameter);
+	parameter_buffer.add(parameter);
 	auto parameter0 = parameter_buffer.average();
-	parameter_buffer.write(parameter);
-	parameter_buffer.write(parameter);
+	parameter_buffer.add(parameter);
+	parameter_buffer.add(parameter);
 	auto parameter1 = parameter_buffer.average();
-	parameter_buffer.write(parameter);
-	parameter_buffer.write(parameter);
-	parameter_buffer.write(parameter);
-	parameter_buffer.write(parameter);
+	parameter_buffer.add(parameter);
+	parameter_buffer.add(parameter);
+	parameter_buffer.add(parameter);
+	parameter_buffer.add(parameter);
 	auto parameter2 = parameter_buffer.average();
 	
 	BOOST_CHECK(parameter == parameter0);

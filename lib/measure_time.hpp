@@ -32,6 +32,16 @@ public:
 	{
 		return double (std::chrono::duration_cast<std::chrono::nanoseconds>(m_end - m_begin).count()) / 1000000;
 	}
+	
+	inline long instant_measure()
+	{
+		return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - m_begin).count();
+	}
+	
+	inline double instant_measure_ms()
+	{
+		return double (std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - m_begin).count()) / 1000000;
+	}
 };
 
 #define MEASURE_TIME_LOCAL(func) {measure_time timer;timer.start();func;timer.stop();std::cout << "Line: " << __LINE__ << " costs: " << timer.measure_ms() << " s." << std::endl;};

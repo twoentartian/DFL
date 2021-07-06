@@ -51,7 +51,6 @@ class dataset_storage : boost::noncopyable
 {
 public:
 	static constexpr char const *DB_LABELS = "labels";
-	static constexpr char const *DB_LABELS_MAP = "labels_map";
 	static constexpr char const *DB_CF_EPOCH = "epoch";
 	
 	using reserved_sapce_full_callback = std::function<void(const std::vector<Ml::tensor_blob_like<DType>>&data, const std::vector<Ml::tensor_blob_like<DType>>&label)>;
@@ -95,11 +94,16 @@ public:
 		_reserved_label.resize(_reserved_in_memory_size);
 	}
 	
-	~dataset_storage()
+	~dataset_storage() noexcept
 	{
 		stop_network_service();
-		_db->Close();
-		delete _db;
+//		rocksdb::Status status;
+//		{
+//			std::lock_guard guard(_db_lock);
+//			status = _db->Close();
+//		}
+//		LOG_IF(WARNING, status.ok()) << "failed to close the dataset database";
+//		delete _db;
 	}
 	
 	void start_network_service(uint16_t port, size_t worker)
@@ -149,7 +153,11 @@ public:
 		
 		rocksdb::WriteOptions write_options;
 		write_options.sync = true;
-		rocksdb::Status status = _db->Write(write_options, &batch);
+		rocksdb::Status status;
+		{
+			std::lock_guard guard(_db_lock);
+			status = _db->Write(write_options, &batch);
+		}
 		assert(status.ok());
 		
 		//update reserved space
@@ -230,6 +238,7 @@ public:
 				}
 				key = label_str[label_index] + "-" + std::to_string(random_number - label_start_loc[label_index]);
 				rocksdb::Status status = _db->Get(rocksdb::ReadOptions(), key, &value);
+
 				if(status.ok())
 				{
 					break;
@@ -267,6 +276,7 @@ private:
 	
 	const std::string _db_path;
 	rocksdb::DB *_db;
+	std::mutex _db_lock;
 
 	std::unordered_map<std::string, int> _counter_by_label;
 	int _reserved_in_memory_size;
@@ -304,7 +314,11 @@ private:
 	void update_labels_in_db()
 	{
 		std::string labels_str = serialize_wrap<boost::archive::binary_oarchive>(_counter_by_label).str();
-		rocksdb::Status status = _db->Put(rocksdb::WriteOptions(), DB_LABELS, labels_str);
+		rocksdb::Status status;
+		{
+			std::lock_guard guard(_db_lock);
+			status = _db->Put(rocksdb::WriteOptions(), DB_LABELS, labels_str);
+		}
 		CHECK(status.ok()) << "failed to write db labels";
 	}
 	

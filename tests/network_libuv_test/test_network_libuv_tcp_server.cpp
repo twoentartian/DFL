@@ -12,7 +12,7 @@ void startClients(uv::EventLoop *loop, uv::SocketAddr &addr, std::vector<uv::Tcp
 				if (status == uv::TcpClient::ConnectStatus::OnConnectSuccess)
 				{
 					std::string data = "hello world!";
-					client->write(data.data(), data.size());
+					client->add(data.data(), data.size());
 					loop->runInThisLoop([loop]()
 					                    {
 						                    loop->stop();
@@ -24,7 +24,7 @@ void startClients(uv::EventLoop *loop, uv::SocketAddr &addr, std::vector<uv::Tcp
 			});
 	client->setMessageCallback([client](const char *data, ssize_t size)
 	                           {
-		                           client->write(data, (unsigned) size, nullptr);
+		                           client->add(data, (unsigned) size, nullptr);
 	                           });
 	
 	client->connect(addr);

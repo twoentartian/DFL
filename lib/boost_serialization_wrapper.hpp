@@ -36,7 +36,7 @@ T deserialize_wrap(std::stringstream& stream)
 }
 
 template<class archive, class T>
-T deserialize_wrap(std::string& stream)
+T deserialize_wrap(const std::string& stream)
 {
 	std::stringstream ss;
 	ss << stream;

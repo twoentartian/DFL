@@ -32,5 +32,13 @@ int init_node_key_address(const configuration_file& config)
 		return -1;
 	}
 	global_var::address.assign(*address_str);
+	
+	auto ml_test_batch_size_opt = config.get<int>("ml_test_batch_size");
+	if (!ml_test_batch_size_opt)
+	{
+		LOG(FATAL) << "invalid test batch size";
+		return -1;
+	}
+	global_var::ml_test_batch_size = *ml_test_batch_size_opt;
 	return 0;
 }

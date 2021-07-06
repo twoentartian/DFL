@@ -97,7 +97,7 @@ namespace crypto
 		std::string ConvertHexToText(const uint8_t *data, size_t length)
 		{
 			char *text = new char[length * 2 + 1];
-			for (uint32_t i = 0; i < length; i++)
+			for (size_t i = 0; i < length; i++)
 			{
 				text[i * 2] = HexToText(data[i] / 16);
 				text[i * 2 + 1] = HexToText(data[i] % 16);
@@ -117,7 +117,7 @@ namespace crypto
 		{
 			std::vector<uint8_t> output;
 			output.reserve(text.size() * 2);
-			for (int8_t loc = 0; loc < text.size(); loc = loc + 2)
+			for (size_t loc = 0; loc < text.size(); loc = loc + 2)
 			{
 				output.push_back(TextToHex(text[loc], text[loc + 1]));
 			}

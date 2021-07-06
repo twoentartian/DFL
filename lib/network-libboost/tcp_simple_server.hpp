@@ -23,7 +23,7 @@ namespace network::simple
 		using CloseHandlerType = std::function<void(std::shared_ptr<tcp_session>)>;
 		using ReceiveHandlerType = std::function<void(char *, uint32_t, std::shared_ptr<tcp_session>)>;
 		
-		tcp_session(const std::shared_ptr<boost::asio::ip::tcp::socket> &socket_ptr)
+		tcp_session(const std::shared_ptr<boost::asio::ip::tcp::socket> &socket_ptr) noexcept
 		{
 			_buffer = new char[BUFFER_SIZE];
 			_connected = true;

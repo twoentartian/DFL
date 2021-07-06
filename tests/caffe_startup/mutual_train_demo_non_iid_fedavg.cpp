@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 			
 			//fed average
 			//fed avg will put all results into a single buffer.
-			parameter_buffers.write(temp_model);
+			parameter_buffers.add(temp_model);
 		}
 		
 		iter ++;

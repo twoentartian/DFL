@@ -12,6 +12,7 @@ configuration_file::json get_default_configuration()
 	output["blockchain_address"] = "62fafaaa3db9d81c2123fdee77227571ada00d5b620e9cb591d06ee3b50ee79b";
 	
 	output["ml_solver_proto_path"] = "../../../dataset/MNIST/lenet_solver_memory.prototxt";
+	output["ml_test_batch_size"] = 100;
 	
 	output["data_storage_service_port"] = 8040;
 	output["data_storage_service_concurrency"] = 2;
@@ -23,6 +24,11 @@ configuration_file::json get_default_configuration()
 	peer_enpoint item1 = {"127.0.0.1", 8001};
 	std::vector<configuration_file::json> peers = {item0.to_json(), item1.to_json()};
 	output["network"]["peers"] = peers;
+	
+	output["transaction_count_per_model_update"] = 10;
+	output["transaction_db_path"] = "./transaction_db";
+	output["reputation_dll_path"] = "../reputation_sdk/sample/libreputation_api_sample.so";
+	output["reputation_dll_datatype"] = "float";
 	
 	return output;
 }

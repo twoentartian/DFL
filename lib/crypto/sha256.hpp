@@ -32,7 +32,7 @@
 }
 namespace crypto
 {
-	class sha256 : Hash {
+	class sha256 : hash {
     protected:
         const uint32_t sha256_k[64] =
                 {0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,

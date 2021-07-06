@@ -13,7 +13,7 @@
 
 namespace crypto
 {
-    class md5 : Hash{
+    class md5 : hash{
     public:
 	    static constexpr int BLOCK_SIZE = 64;
 	    static constexpr int DIGEST_SIZE = 16;

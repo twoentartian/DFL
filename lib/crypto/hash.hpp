@@ -11,7 +11,7 @@
 
 namespace crypto
 {
-	class Hash
+	class hash
 	{
 	public:
 		constexpr static int OutputSize = 0;

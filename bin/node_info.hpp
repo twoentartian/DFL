@@ -13,13 +13,13 @@ public:
 	std::string node_address;
 	std::string node_pubkey;
 	
-	void to_byte_buffer(byte_buffer& target)
+	void to_byte_buffer(byte_buffer& target) const
 	{
 		target.add(node_address);
 		target.add(node_pubkey);
 	}
 	
-	i_json_serialization::json to_json()
+	i_json_serialization::json to_json() const
 	{
 		i_json_serialization::json output;
 		output["node_address"] = node_address;

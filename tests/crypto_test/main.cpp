@@ -43,12 +43,12 @@ int main()
 	auto pubKey = std::get<0>(keypair);
     auto prvKey = std::get<1>(keypair);
 	auto sig = crypto::ecdsa_openssl::sign(digest, prvKey);
-	auto res1 = crypto::ecdsa_openssl::verify(sig, digest.getHexMemory(), pubKey);
+	auto res1 = crypto::ecdsa_openssl::verify(sig, digest, pubKey);
 	CHECK_EQ(res1, 1) << "pass faild.";
 	
 	sig.getHexMemory()[0]++;
 	sig.update_text_from_hex();
-	auto res2 = crypto::ecdsa_openssl::verify(sig, digest.getHexMemory(), pubKey);
+	auto res2 = crypto::ecdsa_openssl::verify(sig, digest, pubKey);
 	CHECK_EQ(res2, 0) << "pass faild.";
 
 

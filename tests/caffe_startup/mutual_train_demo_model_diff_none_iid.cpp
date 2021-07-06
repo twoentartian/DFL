@@ -44,7 +44,6 @@
 #include <caffe/util/format.hpp>
 
 #include <ml_layer.hpp>
-#include <ml_layer/data_convert.hpp>
 
 #include <util.hpp>
 
@@ -66,10 +65,10 @@ int main(int argc, char *argv[])
 {
 	google::InitGoogleLogging(argv[0]);
 	
-	constexpr int NUMBER_NODES = 5;
-	constexpr int MAX_ITER = 500;
+	constexpr int NUMBER_NODES = 10;
+	constexpr int MAX_ITER = 120;
 	constexpr int TRAIN_BATCH_SIZE = 64; //this must a multiple of batch_size, it will be divided into many smaller batch automatically
-	constexpr int TEST_ITER = 100;
+	constexpr int TEST_ITER = 10;
 	constexpr int TEST_BATCH_SIZE = 100;
 	constexpr float filter_limit = 0.5; // 0 to drop all data, 1 to stop dropping
 	constexpr bool record_layer_to_file = false;
@@ -95,6 +94,7 @@ int main(int argc, char *argv[])
 	}
 	
 	int iter = 0;
+	Ml::fed_avg_buffer<Ml::caffe_parameter_net<float>, NUMBER_NODES> parameter_buffer;
 	while (iter < MAX_ITER)
 	{
 		bool exit = false;
@@ -106,14 +106,35 @@ int main(int argc, char *argv[])
 			//auto [train_data, train_label] = train_dataset.get_random_data_by_Label(label, TRAIN_BATCH_SIZE);
 			//auto [train_data, train_label] = train_dataset.get_random_data(TRAIN_BATCH_SIZE);
 			
-			//extreme non iid situation
-			label.getData() = {float (node_index*2)};
-			auto [train_data_0, train_label_0] = train_dataset.get_random_data_by_Label(label, TRAIN_BATCH_SIZE/2);
-			label.getData() = {float (node_index*2+1)};
-			auto [train_data_1, train_label_1] = train_dataset.get_random_data_by_Label(label, TRAIN_BATCH_SIZE/2);
-			std::vector<Ml::tensor_blob_like<float>> train_data = util::vector_concatenate(train_data_0, train_data_1);
-			std::vector<Ml::tensor_blob_like<float>> train_label = util::vector_concatenate(train_label_0, train_label_1);
-			util::vector_twin_shuffle(train_data,train_label);
+//			//extreme non iid situation
+//			label.getData() = {float (node_index*2)};
+//			auto [train_data_0, train_label_0] = train_dataset.get_random_data_by_Label(label, TRAIN_BATCH_SIZE/2);
+//			label.getData() = {float (node_index*2+1)};
+//			auto [train_data_1, train_label_1] = train_dataset.get_random_data_by_Label(label, TRAIN_BATCH_SIZE/2);
+//			std::vector<Ml::tensor_blob_like<float>> train_data = util::vector_concatenate(train_data_0, train_data_1);
+//			std::vector<Ml::tensor_blob_like<float>> train_label = util::vector_concatenate(train_label_0, train_label_1);
+//			util::vector_twin_shuffle(train_data,train_label);
+			
+			std::random_device dev;
+			std::mt19937 rng(dev());
+			std::uniform_real_distribution<float> distribution(0.1,0.3);
+			std::uniform_real_distribution<float> dense_distribution(0.8,1.2);
+			Ml::non_iid_distribution<float> non_iid_distribution;
+			for (int i = 0; i < 10; ++i)
+			{
+				label.getData() = {float (i)};
+				if(i % NUMBER_NODES == node_index)
+				{
+					non_iid_distribution.add_distribution(label, dense_distribution(rng));
+				}
+				else
+				{
+					non_iid_distribution.add_distribution(label, distribution(rng));
+				}
+				
+			}
+			
+			auto [train_data, train_label] = train_dataset.get_random_non_iid_dataset(non_iid_distribution, TRAIN_BATCH_SIZE);
 			
 			auto parameter_before = models[node_index].get_parameter();
 			models[node_index].train(train_data,train_label);
@@ -127,7 +148,7 @@ int main(int argc, char *argv[])
 			{
 				auto& blob = layers[i].getBlob_p();
 				auto& blob_data = blob->getData();
-				if (blob_data.size() == 0)
+				if (blob_data.empty())
 				{
 					continue;
 				}
@@ -147,8 +168,10 @@ int main(int argc, char *argv[])
 					}
 				}
 				
-				std::cout << "node:" << node_index << "    iter:" << iter << "    layer:" << i << "    drop:" << ((float)drop_count)/blob_data.size() << std::endl;
+				std::cout << "node:" << node_index << "    iter:" << iter << "    layer:" << i << "    drop:" << ((float)drop_count)/blob_data.size() << "(" << drop_count <<"/" << blob_data.size() <<")" << std::endl;
 			}
+			
+			parameter_buffer.add(parameter_diff);
 			
 			//update all nodes' model
 			for (int node_index_update = 0; node_index_update < NUMBER_NODES; ++node_index_update)
@@ -156,14 +179,17 @@ int main(int argc, char *argv[])
 				if (node_index_update == node_index)
 				{
 					//self
-					auto parameter_new = parameter_diff + parameter_before;
+					//auto parameter_new = parameter_diff + parameter_before;
+					auto parameter_new = parameter_buffer.average() + parameter_before;
 					models[node_index_update].set_parameter(parameter_new);
 				}
 				else
 				{
 					//other nodes
+					
+					//only update self node,
 					auto parameter = models[node_index_update].get_parameter();
-					auto parameter_new = parameter_diff + parameter;
+					auto parameter_new = parameter_buffer.average() + parameter;
 					models[node_index_update].set_parameter(parameter_new);
 				}
 				
