@@ -1,6 +1,7 @@
 #include <thread>
 #include <unordered_map>
 #include <fstream>
+#include <set>
 
 #include <glog/logging.h>
 
@@ -504,6 +505,9 @@ int main(int argc, char *argv[])
 				all_ticks.push_back(single_model.first);
 			}
 		}
+		std::set<int> all_ticks_set;
+		for(int & all_tick : all_ticks) all_ticks_set.insert( all_tick );
+		all_ticks.assign(all_ticks_set.begin(), all_ticks_set.end());
 		std::sort(all_ticks.begin(), all_ticks.end());
 		
 		//print first line
