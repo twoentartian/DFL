@@ -25,8 +25,6 @@ configuration_file::json get_default_simulation_configuration()
 	output["ml_dataset_all_possible_labels"] = configuration_file::json::array({0,1,2,3,4,5,6,7,8,9});
 	output["ml_reputation_dll_path"] = "./libreputation_api_sample.so";
 	
-	output["ml_model_compress_filter_limit"] = 0.5;
-	
 	configuration_file::json node;
 	node["name"] = "1";
 	node["dataset_mode"] = "default"; //default - randomly choose from dataset, iid - randomly choose from iid labels, non-iid - choose higher frequency labels for specific label

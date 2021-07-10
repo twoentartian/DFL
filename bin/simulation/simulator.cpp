@@ -44,6 +44,21 @@ public:
 		solver.reset(new Ml::MlCaffeModel<model_datatype, caffe::SGDSolver>());
 	}
 	
+	~node()
+	{
+		if (reputation_output)
+		{
+			reputation_output->flush();
+			reputation_output->close();
+		}
+	}
+	
+	void open_reputation_file(const std::filesystem::path& output_path)
+	{
+		reputation_output.reset(new std::ofstream());
+		reputation_output->open(output_path / (name + "_reputation.txt"));
+	}
+	
 	std::string name;
 	dataset_mode_type dataset_mode;
 	std::unordered_map<int, std::tuple<Ml::caffe_parameter_net<model_datatype>, float>> nets_record;
@@ -57,6 +72,7 @@ public:
 	std::unordered_map<std::string, double> reputation_map;
 	model_type model_generation_type;
 	float filter_limit;
+	std::shared_ptr<std::ofstream> reputation_output;
 };
 
 std::unordered_map<std::string, node> node_container;
@@ -141,8 +157,9 @@ int main(int argc, char *argv[])
 		if (buf_size > max_buffer_size) max_buffer_size = buf_size;
 		auto [iter, status] = node_container.emplace(node_name, node(node_name, buf_size));
 		
-		//load models solver
+		//load models solver and open reputation_file
 		iter->second.solver->load_caffe_model(ml_solver_proto);
+		iter->second.open_reputation_file(output_path);
 		
 		//dataset mode
 		const std::string dataset_mode_str = single_node["dataset_mode"];
@@ -223,6 +240,18 @@ int main(int argc, char *argv[])
 	test_dataset.load_dataset_mnist(ml_test_dataset,ml_test_dataset_label);
 	
 	std::ofstream drop_rate(output_path / "drop_rate.txt", std::ios::binary);
+	
+	//print reputation first line
+	for (auto& single_node : node_container)
+	{
+		*single_node.second.reputation_output << "tick";
+		for (auto& reputation_item: single_node.second.reputation_map)
+		{
+			*single_node.second.reputation_output << "," << reputation_item.first;
+		}
+		*single_node.second.reputation_output << std::endl;
+	}
+	
 	////////////  BEGIN SIMULATION  ////////////
 	int tick = 0;
 	while (tick <= ml_max_tick)
@@ -322,7 +351,7 @@ int main(int argc, char *argv[])
 								data = NAN;
 							}
 						}
-						drop_rate << "node:" << single_node.second.name << "    iter:" << tick << "    layer:" << i << "    drop:" << ((float)drop_count) / blob_data.size() << "(" << drop_count << "/" << blob_data.size() << ")" << std::endl;
+						drop_rate << "node:" << single_node.second.name << "    tick:" << tick << "    layer:" << i << "    drop:" << ((float)drop_count) / blob_data.size() << "(" << drop_count << "/" << blob_data.size() << ")" << std::endl;
 					}
 					parameter_output = parameter_diff.dot_divide(parameter_diff).dot_product(parameter_after);
 					type = model_type::filtered;
@@ -383,6 +412,14 @@ int main(int argc, char *argv[])
 							reputation_dll.get()->update_model(parameter, self_accuracy, received_models, reputation_map);
 							updating_node.second.solver->set_parameter(parameter);
 							
+							//print reputation map
+							*updating_node.second.reputation_output << tick;
+							for (const auto& reputation_pair : reputation_map)
+							{
+								*updating_node.second.reputation_output << "," << reputation_pair.second;
+							}
+							*updating_node.second.reputation_output << std::endl;
+							
 							//clear buffer and start new loop
 							updating_node.second.parameter_buffer.clear();
 						}
@@ -426,7 +463,6 @@ int main(int argc, char *argv[])
 		std::atomic_int progress_counter = 0;
 		std::atomic_int current_progress = 0;
 		constexpr int step = 5;
-		std::cout << "testing - 0%";
 		auto_multi_thread::ParallelExecution_with_thread_index(worker, [&current_progress, &total, &progress_counter, &solver_for_final_testing, &test_dataset, &ml_test_batch_size](uint32_t index, uint32_t thread_index, std::tuple<Ml::caffe_parameter_net<model_datatype>, float>& modeL_accuracy){
 			auto& [model, accuracy] = modeL_accuracy;
 			auto [test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
@@ -436,12 +472,11 @@ int main(int argc, char *argv[])
 			progress_counter++;
 			if (int (float(progress_counter) / float (total) * 100.0) > current_progress)
 			{
-				std::cout << "\r                    ";
-				std::cout << "testing - " << current_progress << "%";
+				std::cout << "testing - " << current_progress << "%" << std::endl;
+				std::cout.flush();
 				current_progress += step;
 			}
 		}, test_modeL_container.size(), test_modeL_container.data());
-		std::cout << "\r                    ";
 		std::cout << "testing - 100%" << std::endl;
 		
 		//apply back to map
@@ -458,17 +493,50 @@ int main(int argc, char *argv[])
 		delete[] solver_for_final_testing;
 	}
 	
-	//print accuracy
-	for (auto& single_node : node_container)
+	//print accuracy to file
 	{
-		std::cout << "node name: "<< single_node.second.name << std::endl;
-		for (auto& single_model: single_node.second.nets_record)
+		std::ofstream accuracy_file(output_path/"accuracy.csv", std::ios::binary);
+		std::vector<int> all_ticks;
+		for (auto& single_node : node_container)
 		{
-			auto& [model, accuracy] = single_model.second;
-			std::cout << "tick: "<< single_model.first << "  accuracy: " << accuracy << std::endl;
+			for (auto& single_model: single_node.second.nets_record)
+			{
+				all_ticks.push_back(single_model.first);
+			}
 		}
+		std::sort(all_ticks.begin(), all_ticks.end());
+		
+		//print first line
+		accuracy_file << "tick";
+		for (auto& single_node : node_container)
+		{
+			accuracy_file << "," << single_node.second.name;
+		}
+		accuracy_file << std::endl;
+		
+		//print accuracy
+		for (auto current_tick: all_ticks)
+		{
+			accuracy_file << current_tick;
+			for (auto& single_node : node_container)
+			{
+				auto iter_find = single_node.second.nets_record.find(current_tick);
+				if (iter_find != single_node.second.nets_record.end())
+				{
+					auto& [model, accuracy] = iter_find->second;
+					accuracy_file << "," << accuracy;
+				}
+				else
+				{
+					accuracy_file << "," << " ";
+				}
+			}
+			accuracy_file << std::endl;
+		}
+		
+		accuracy_file.flush();
+		accuracy_file.close();
 	}
-	
 
 	return 0;
 }

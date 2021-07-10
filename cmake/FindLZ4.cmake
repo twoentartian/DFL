@@ -1,7 +1,5 @@
-
-
 find_path(LZ4_INCLUDE_DIR
-        NAMES lz4.c
+        NAMES lz4.h
         DOC "lz4 include directory")
 mark_as_advanced(LZ4_INCLUDE_DIR)
 find_library(LZ4_LIBRARY
