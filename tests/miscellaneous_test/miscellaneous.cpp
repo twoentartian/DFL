@@ -1,9 +1,11 @@
 #include <thread>
+#include <cmath>
 #include <time_util.hpp>
 #include <byte_buffer.hpp>
 #include <time_util.hpp>
 #include <thread_pool.hpp>
 #include <measure_time.hpp>
+#include <ml_layer.hpp>
 
 #define BOOST_TEST_MAIN
 
@@ -48,5 +50,29 @@ BOOST_AUTO_TEST_SUITE (miscellaneous_test)
 		std::cout << "time:" << measureTime.measure_ms() << "ms" << std::endl;
 	}
 	
+	BOOST_AUTO_TEST_CASE (nan)
+	{
+		double nan_num = NAN;
+		std::cout << nan_num/1 << nan_num +1 << std::endl;
+	}
+	
+	BOOST_AUTO_TEST_CASE (fed_avg)
+	{
+		const std::string solver_path = "../../../dataset/MNIST/lenet_solver_memory.prototxt";
+		Ml::MlCaffeModel<float, caffe::SGDSolver> model;
+		model.load_caffe_model(solver_path);
+		Ml::caffe_parameter_net<float> parameter = model.get_parameter();
+		Ml::fed_avg_buffer<Ml::caffe_parameter_net<float>> parameter_buffer(5);
+		
+		parameter_buffer.add(parameter);
+		parameter_buffer.add(parameter);
+		parameter_buffer.add(parameter);
+		parameter_buffer.add(parameter);
+		parameter_buffer.add(parameter);
+		parameter_buffer.add(parameter);
+		parameter_buffer.add(parameter);
+		
+		auto average = parameter_buffer.average_ignore_nan();
+	}
 	
 BOOST_AUTO_TEST_SUITE_END()

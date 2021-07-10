@@ -12,7 +12,7 @@ enum class model_type
 {
 	unknown = 0,
 	normal,
-	differential,
+	filtered,
 	
 	model_type_lastIndex
 };

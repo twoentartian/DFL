@@ -20,6 +20,8 @@ namespace Ml {
     class tensor_blob_like : public tensor_blob_like_abs {
     public:
         tensor_blob_like() = default;
+	
+	    using DataType = DType;
 
         void fromBlob(const caffe::Blob <DType> &blob) {
             //shape
@@ -95,6 +97,45 @@ namespace Ml {
 		    }
 		    return output;
 	    }
+	
+	    template<typename D>
+	    tensor_blob_like<DType> operator*(const D& target) const
+	    {
+		    tensor_blob_like<DType> output = *this;
+		    for(int i = 0; i < output._data.size(); i++)
+		    {
+			    output._data[i] *= target;
+		    }
+		    return output;
+	    }
+	
+	    [[nodiscard]] tensor_blob_like<DType> dot_divide(const tensor_blob_like<DType>& target) const
+	    {
+		    tensor_blob_like<DType> output = *this;
+		    if(target._shape != this->_shape)
+		    {
+			    throw std::invalid_argument("tensor/blob shape mismatch");
+		    }
+		    for(int i = 0; i < output._data.size(); i++)
+		    {
+			    output._data[i] /= target._data[i];
+		    }
+		    return output;
+	    }
+	
+	    [[nodiscard]] tensor_blob_like<DType> dot_product(const tensor_blob_like<DType>& target) const
+	    {
+		    tensor_blob_like<DType> output = *this;
+		    if(target._shape != this->_shape)
+		    {
+			    throw std::invalid_argument("tensor/blob shape mismatch");
+		    }
+		    for(int i = 0; i < output._data.size(); i++)
+		    {
+			    output._data[i] *= target._data[i];
+		    }
+		    return output;
+	    }
 
         bool empty() {
             return _data.empty();
@@ -108,6 +149,42 @@ namespace Ml {
 	        this->_data.swap(target._data);
 	        this->_shape.swap(target._shape);
         }
+        
+        void set_all(DType value)
+        {
+	        for (auto& single_value: _data)
+	        {
+				single_value = value;
+	        }
+        }
+	
+	    void patch_weight(const tensor_blob_like<DType>& patch, DType ignore = NAN)
+	    {
+		    if(patch._shape != this->_shape)
+		    {
+			    throw std::invalid_argument("tensor/blob shape mismatch");
+		    }
+		    if (isnan(ignore))
+		    {
+			    for(int i = 0; i < _data.size(); i++)
+			    {
+				    if (!isnan(patch._data[i]))
+				    {
+					    _data[i] = patch._data[i];
+				    }
+			    }
+		    }
+		    else
+		    {
+			    for(int i = 0; i < _data.size(); i++)
+			    {
+				    if (patch._data[i] != ignore)
+				    {
+					    _data[i] = patch._data[i];
+				    }
+			    }
+		    }
+	    }
 	
 	    [[nodiscard]] std::string get_str() const
 	    {

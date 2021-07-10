@@ -31,7 +31,9 @@ namespace Ml
     {
     public:
         caffe_parameter_layer() = default;
-
+	
+	    using DataType = DType;
+        
         void fromLayer(const caffe::Layer<DType>& layer)
         {
             _name = layer.layer_param().name();
@@ -109,6 +111,15 @@ namespace Ml
 		    return output;
 	    }
 	
+	    template<typename D>
+	    caffe_parameter_layer<DType> operator*(const D& target) const
+	    {
+		    caffe_parameter_layer<DType> output = *this;
+		    output._blob_p.reset(new tensor_blob_like<DType>());
+		    *output._blob_p = *(this->_blob_p) * target;
+		    return output;
+	    }
+	
 	    bool operator==(const caffe_parameter_layer<DType>& target) const
 	    {
 		    return *(this->_blob_p) == *(target._blob_p);
@@ -118,10 +129,39 @@ namespace Ml
 	    {
 		    return !(*this==target);
 	    }
+	
+	    [[nodiscard]] caffe_parameter_layer<DType> dot_divide(const caffe_parameter_layer<DType>& target) const
+	    {
+		    caffe_parameter_layer<DType> output = *this;
+		    output._blob_p.reset(new tensor_blob_like<DType>());
+		    *output._blob_p = this->_blob_p->dot_divide(*target._blob_p);
+		    return output;
+	    }
+	
+	    [[nodiscard]] caffe_parameter_layer<DType> dot_product(const caffe_parameter_layer<DType>& target) const
+	    {
+		    caffe_parameter_layer<DType> output = *this;
+		    output._blob_p.reset(new tensor_blob_like<DType>());
+		    *output._blob_p = this->_blob_p->dot_product(*target._blob_p);
+		    return output;
+	    }
 
         GENERATE_GET(_name, getName);
         GENERATE_GET(_type, getType);
         GENERATE_GET(_blob_p, getBlob_p);
+	
+	    void set_all(DType value)
+	    {
+		    if (!_blob_p) return;
+	    	_blob_p->set_all(value);
+	    }
+	    
+	    void patch_weight(const caffe_parameter_layer<DType>& patch, DType ignore = NAN)
+	    {
+		    if (!_blob_p) return;
+		    _blob_p->patch_weight(*patch._blob_p, ignore);
+	    }
+        
     private:
         friend class boost::serialization::access;
 
@@ -134,6 +174,8 @@ namespace Ml
     class caffe_parameter_net
     {
     public:
+	    using DataType = DType;
+    	
         caffe_parameter_net() = default;
 
         void fromNet(const caffe::Net<DType>& net)
@@ -204,6 +246,17 @@ namespace Ml
 		    return output;
 	    }
 	
+	    template<typename D>
+	    caffe_parameter_net<DType> operator*(const D& target) const
+	    {
+		    caffe_parameter_net<DType> output = *this;
+		    for (int i = 0; i < output._layers.size(); ++i)
+		    {
+			    output._layers[i] = output._layers[i] * target;
+		    }
+		    return output;
+	    }
+	
 	    bool operator==(const caffe_parameter_net<DType>& target) const
 	    {
 		    if(target._layers.size() != this->_layers.size()) return false;
@@ -217,6 +270,42 @@ namespace Ml
 	    bool operator!=(const caffe_parameter_net<DType>& target) const
 	    {
         	return !(*this==target);
+	    }
+	
+	    [[nodiscard]] caffe_parameter_net<DType> dot_divide(const caffe_parameter_net<DType>& target) const
+	    {
+		    caffe_parameter_net<DType> output = *this;
+		    for (int i = 0; i < output._layers.size(); ++i)
+		    {
+			    output._layers[i] = output._layers[i].dot_divide(target._layers[i]);
+		    }
+		    return output;
+	    }
+	
+	    [[nodiscard]] caffe_parameter_net<DType> dot_product(const caffe_parameter_net<DType>& target) const
+	    {
+		    caffe_parameter_net<DType> output = *this;
+		    for (int i = 0; i < output._layers.size(); ++i)
+		    {
+			    output._layers[i] = output._layers[i].dot_product(target._layers[i]);
+		    }
+		    return output;
+	    }
+	
+	    void set_all(DType value)
+	    {
+		    for (auto& single_layer: _layers)
+		    {
+			    single_layer.set_all(value);
+		    }
+	    }
+	
+	    void patch_weight(const caffe_parameter_net<DType>& patch, DType ignore = NAN)
+	    {
+		    for (int i = 0; i < _layers.size(); ++i)
+		    {
+			    _layers[i].patch_weight(patch._layers[i], ignore);
+		    }
 	    }
 
         GENERATE_GET(_name, getName);

@@ -1,7 +1,7 @@
 import re
 
 file_path = 'test_data/console_output.txt'
-number_of_node = 10
+number_of_node = 4
 
 if __name__ == '__main__':
     f = open(file_path)

@@ -4,48 +4,10 @@
 #include <cstring>
 #include <map>
 #include <string>
-#include <vector>
-#include <stdint.h>
-#include <sys/stat.h>
-#include <fstream>
 #include <random>
-
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-
-#include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <google/protobuf/text_format.h>
-#include <leveldb/db.h>
-#include <leveldb/write_batch.h>
-#include <lmdb.h>
-#include <boost/algorithm/string.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
-#include <boost/smart_ptr/scoped_ptr.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
-
-#include <caffe/caffe.hpp>
-#include <caffe/util/io.hpp>
-#include <caffe/blob.hpp>
-#include <caffe/common.hpp>
-#include <caffe/layer_factory.hpp>
-#include <caffe/util/math_functions.hpp>
-#include <caffe/syncedmem.hpp>
-#include <caffe/util/upgrade_proto.hpp>
-#include <caffe/layers/pooling_layer.hpp>
-#include <caffe/net.hpp>
-#include <caffe/proto/caffe.pb.h>
-#include <caffe/solver.hpp>
-#include <caffe/sgd_solvers.hpp>
-#include <caffe/layers/memory_data_layer.hpp>
-#include <caffe/util/db.hpp>
-#include <caffe/util/format.hpp>
-
 #include <ml_layer.hpp>
-
-#include <util.hpp>
 
 //return <max, min>
 template<typename T>
@@ -65,10 +27,10 @@ int main(int argc, char *argv[])
 {
 	google::InitGoogleLogging(argv[0]);
 	
-	constexpr int NUMBER_NODES = 10;
+	constexpr int NUMBER_NODES = 4;
 	constexpr int MAX_ITER = 120;
 	constexpr int TRAIN_BATCH_SIZE = 64; //this must a multiple of batch_size, it will be divided into many smaller batch automatically
-	constexpr int TEST_ITER = 10;
+	constexpr int TEST_ITER = 20;
 	constexpr int TEST_BATCH_SIZE = 100;
 	constexpr float filter_limit = 0.5; // 0 to drop all data, 1 to stop dropping
 	constexpr bool record_layer_to_file = false;
@@ -87,14 +49,13 @@ int main(int argc, char *argv[])
 	test_dataset.load_dataset_mnist(test_dataset_path,test_label_dataset_path);
 	
 	Ml::MlCaffeModel<float, caffe::SGDSolver> models[NUMBER_NODES];
-	Ml::caffe_parameter_net<float> parameters[NUMBER_NODES];
 	for(int i = 0; i < NUMBER_NODES; i++)
 	{
 		models[i].load_caffe_model(solver_path);
 	}
 	
 	int iter = 0;
-	Ml::fed_avg_buffer<Ml::caffe_parameter_net<float>, NUMBER_NODES> parameter_buffer;
+	Ml::fed_avg_buffer<Ml::caffe_parameter_net<float>> parameter_buffer(NUMBER_NODES);
 	while (iter < MAX_ITER)
 	{
 		bool exit = false;
@@ -164,35 +125,27 @@ int main(int argc, char *argv[])
 					{
 						//drop
 						drop_count++;
-						data = 0;
+						data = NAN;
 					}
 				}
 				
 				std::cout << "node:" << node_index << "    iter:" << iter << "    layer:" << i << "    drop:" << ((float)drop_count)/blob_data.size() << "(" << drop_count <<"/" << blob_data.size() <<")" << std::endl;
 			}
 			
-			parameter_buffer.add(parameter_diff);
+			auto parameter_filtered = parameter_diff.dot_divide(parameter_diff).dot_product(parameter_after);
+			
+			parameter_buffer.add(parameter_filtered);
 			
 			//update all nodes' model
+			auto model_average = parameter_buffer.average_ignore();
 			for (int node_index_update = 0; node_index_update < NUMBER_NODES; ++node_index_update)
 			{
 				if (node_index_update == node_index)
 				{
 					//self
-					//auto parameter_new = parameter_diff + parameter_before;
-					auto parameter_new = parameter_buffer.average() + parameter_before;
-					models[node_index_update].set_parameter(parameter_new);
+					parameter_before.patch_weight(model_average);
+					models[node_index_update].set_parameter(parameter_before);
 				}
-				else
-				{
-					//other nodes
-					
-					//only update self node,
-					auto parameter = models[node_index_update].get_parameter();
-					auto parameter_new = parameter_buffer.average() + parameter;
-					models[node_index_update].set_parameter(parameter_new);
-				}
-				
 			}
 			
 			
@@ -220,7 +173,7 @@ int main(int argc, char *argv[])
 			{
 				auto [test_data_random, test_label_random] = test_dataset.get_random_data(TEST_BATCH_SIZE);
 				float accuracy = models[node_index].evaluation(test_data_random, test_label_random);
-				
+
 				std::cout << boost::format("iter: %1% node:%2% accuracy: %3%") % iter % node_index % accuracy << std::endl;
 				if (accuracy > 0.995) exit = true;
 			}

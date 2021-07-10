@@ -32,12 +32,43 @@ namespace Ml
 		T average()
 		{
 			T output = _data[0] - _data[0];
-			int buffer_size = _current_size;
-			for (int i = 0; i < buffer_size; ++i)
+			for (int i = 0; i < _current_size; ++i)
 			{
 				output = output + _data[i];
 			}
 			output = output / _current_size;
+			return output;
+		}
+		
+		T average_ignore(typename T::DataType ignore = NAN)
+		{
+			static_assert(std::is_same_v<T, caffe_parameter_net<typename T::DataType>>);
+			caffe_parameter_net<typename T::DataType> output = _data[0] - _data[0], counter = _data[0] - _data[0];
+			output.set_all(0);
+			counter.set_all(0);
+			
+			for (size_t model_index = 0; model_index < _current_size; ++model_index)
+			{
+				auto& model = _data[model_index];
+				for (size_t layer_index = 0; layer_index < model.getLayers().size(); ++layer_index )
+				{
+					auto& layer = model.getLayers()[layer_index];
+					auto& layer_output = output.getLayers()[layer_index];
+					auto& layer_counter = counter.getLayers()[layer_index];
+					for (size_t weight_index = 0; weight_index < layer.getBlob_p()->getData().size(); ++weight_index)
+					{
+						auto& blob_data = layer.getBlob_p()->getData()[weight_index];
+						auto& blob_data_output = layer_output.getBlob_p()->getData()[weight_index];
+						auto& blob_data_counter = layer_counter.getBlob_p()->getData()[weight_index];
+						
+						if (blob_data == ignore) continue;
+						blob_data_output += blob_data;
+						blob_data_counter ++;
+					}
+				}
+			}
+			output = output.dot_divide(counter);
+			
 			return output;
 		}
 		
@@ -60,4 +91,5 @@ namespace Ml
 			}
 		}
 	};
+	
 }
