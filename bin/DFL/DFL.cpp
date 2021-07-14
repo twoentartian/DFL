@@ -42,23 +42,38 @@ std::mutex exit_cv_lock;
 
 void generate_transaction(const std::vector<Ml::tensor_blob_like<model_datatype>> &data, const std::vector<Ml::tensor_blob_like<model_datatype>> &label)
 {
-	Ml::caffe_parameter_net<model_datatype> parameter;
+	Ml::caffe_parameter_net<model_datatype> net_after,net_before;
 	float accuracy;
 	{
 		std::lock_guard guard(training_lock);
+		net_before = model_train->get_parameter();
 		model_train->train(data, label, false);
 		auto[test_dataset_data, test_dataset_label] = main_dataset_storage->get_random_data(global_var::ml_test_batch_size);
 		accuracy = model_train->evaluation(test_dataset_data, test_dataset_label);
 		LOG(INFO) << "training complete, accuracy: " << accuracy;
 		std_cout::println("[DFL] training complete, accuracy: " + std::to_string(accuracy));
-		parameter = model_train->get_parameter();
+		net_after = model_train->get_parameter();
 	}
-	transaction trans = main_transaction_generator->generate(parameter, std::to_string(accuracy));
+	
+	std::string parameter_str;
+	if (global_var::ml_model_stream_type == "compressed")
+	{
+		parameter_str = Ml::model_interpreter<float>::generate_model_stream_by_compress_diff(net_before, net_after, global_var::ml_model_stream_compressed_filter_limit);
+	}
+	else if (global_var::ml_model_stream_type == "normal")
+	{
+		parameter_str = Ml::model_interpreter<float>::generate_model_stream_normal(net_after);
+	}
+	else
+	{
+		LOG(WARNING) << "unknown ml_model_stream_type";
+	}
+	
+	transaction trans = main_transaction_generator->generate(parameter_str, std::to_string(accuracy));
 	main_transaction_tran_rece->broadcast_transaction(trans);
 	
 	//record transaction
 	//transaction_helper::save_to_file(trans, "./trans.json");
-	
 }
 
 void receive_transaction(const transaction& trans)
@@ -108,10 +123,10 @@ void update_model(std::shared_ptr<std::vector<transaction>> transactions)
 	//TODO: diff_model logic not implemented
 	for (int i = 0; i < received_models.size(); ++i)
 	{
-		received_models[i].type = model_type::normal;
-		std::stringstream ss;
-		ss << (*transactions)[i].content.model_data;
-		received_models[i].model_parameter = deserialize_wrap<boost::archive::binary_iarchive, Ml::caffe_parameter_net<model_datatype>>(ss);
+		Ml::model_compress_type model_type;
+		std::tie(received_models[i].model_parameter, model_type) = Ml::model_interpreter<float>::parse_model_stream((*transactions)[i].content.model_data);
+		
+		//get test dataset
 		received_models[i].generator_address = (*transactions)[i].content.creator.node_address;
 		auto[test_dataset_data, test_dataset_label] = main_dataset_storage->get_random_data(global_var::ml_test_batch_size);
 		if (test_dataset_data.empty())
@@ -119,8 +134,29 @@ void update_model(std::shared_ptr<std::vector<transaction>> transactions)
 			LOG(ERROR) << "empty dataset db, cannot perform accuracy test";
 			return;
 		}
-		model_test->set_parameter(received_models[i].model_parameter);
-		received_models[i].accuracy = model_test->evaluation(test_dataset_data, test_dataset_label);
+		
+		if (model_type == Ml::model_compress_type::compressed_by_diff)
+		{
+			received_models[i].type = Ml::model_compress_type::compressed_by_diff;
+			
+			//copy self parameter and patch to get accuracy
+			auto self_parameter_copy = parameter;
+			self_parameter_copy.patch_weight(received_models[i].model_parameter);
+			model_test->set_parameter(self_parameter_copy);
+			received_models[i].accuracy = model_test->evaluation(test_dataset_data, test_dataset_label);
+		}
+		else if (model_type == Ml::model_compress_type::normal)
+		{
+			received_models[i].type = Ml::model_compress_type::normal;
+			
+			//normal model stream
+			model_test->set_parameter(received_models[i].model_parameter);
+			received_models[i].accuracy = model_test->evaluation(test_dataset_data, test_dataset_label);
+		}
+		else
+		{
+			LOG(WARNING) << "unknown ml_model_stream_type";
+		}
 	}
 	
 	reputation_dll.get()->update_model(parameter, self_accuracy, received_models, reputation_map);
@@ -183,6 +219,10 @@ int main(int argc, char **argv)
 	model_train->load_caffe_model(*config.get<std::string>("ml_solver_proto_path"));
 	model_test.reset(new Ml::MlCaffeModel<float, caffe::SGDSolver>());
 	model_test->load_caffe_model(*config.get<std::string>("ml_solver_proto_path"));
+	
+	//model stream type
+	global_var::ml_model_stream_type = *config.get<std::string>("ml_model_stream_type");
+	global_var::ml_model_stream_compressed_filter_limit = *config.get<float>("ml_model_stream_compressed_filter_limit");
 	
 	//start transaction_storage
 	main_transaction_storage.reset(new transaction_storage());

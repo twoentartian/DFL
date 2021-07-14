@@ -29,7 +29,7 @@ public:
 		boost::dll::fs::path libPath(_dll_path);
 		try
 		{
-			_dll = boost::dll::import<class_type>(libPath, class_name);
+			_dll = boost::dll::import_symbol<class_type>(libPath, class_name);
 		}
 		catch (...)
 		{

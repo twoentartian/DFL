@@ -7,12 +7,14 @@
 configuration_file::json get_default_configuration()
 {
 	configuration_file::json output;
-	output["blockchain_public_key"] = "06b0caa32089e1430f2472581f6ac7504141cb885430ca1679af5e89e638dd6fb32601696b34d7f827d7cca0a1cd38fd6f818b5cae25450b1ed3a6ac48059acd82";
-	output["blockchain_private_key"] = "c231a5b395f271b6b03cb0b4490219995290f949071fceaec4ce127c410447b1";
-	output["blockchain_address"] = "62fafaaa3db9d81c2123fdee77227571ada00d5b620e9cb591d06ee3b50ee79b";
+	output["blockchain_public_key"] = "070a95eb6bd64eb273a2649a0ea61b932d50417275b8e250595c7a47468534a86fbd01f2f06efbd226ef86ab56abdd5cc296800794c9250c12c105fa3df86d3ad7";
+	output["blockchain_private_key"] = "e321c369d8b1ff39aeabadc7846735e4fe5178af41b87eb421a6773c8c4810c3";
+	output["blockchain_address"] = "a49487e4550b9961af17161900c8496a4ddc0638979d3c4f9b305d2b4dc0c665";
 	
 	output["ml_solver_proto_path"] = "../../../dataset/MNIST/lenet_solver_memory.prototxt";
 	output["ml_test_batch_size"] = 100;
+	output["ml_model_stream_type"] = "compressed";  //compressed or normal
+	output["ml_model_stream_compressed_filter_limit"] = 0.5;
 	
 	output["data_storage_service_port"] = 8040;
 	output["data_storage_service_concurrency"] = 2;

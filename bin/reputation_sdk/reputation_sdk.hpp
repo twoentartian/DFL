@@ -8,21 +8,12 @@
 #include <dll_importer.hpp>
 #include <ml_layer.hpp>
 
-enum class model_type
-{
-	unknown = 0,
-	normal,
-	filtered,
-	
-	model_type_lastIndex
-};
-
 template<typename DType>
 class updated_model
 {
 public:
 	Ml::caffe_parameter_net<DType> model_parameter;
-	model_type type;
+	Ml::model_compress_type type;
 	double accuracy;
 	std::string generator_address;
 };

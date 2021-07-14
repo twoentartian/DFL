@@ -258,7 +258,7 @@ public:
 		return true;
 	}
 	
-	transaction generate(const Ml::caffe_parameter_net<float>& parameter, std::string accuracy)
+	transaction generate(const std::string& parameter, const std::string& accuracy)
 	{
 		transaction output;
 		output.content.creator.node_pubkey = _public_key.getTextStr_lowercase();
@@ -267,7 +267,7 @@ public:
 		output.content.creation_time = time_util::get_current_utc_time();
 		output.content.expire_time = output.content.creation_time + 60;
 		output.content.ttl = 10;
-		output.content.model_data = serialize_wrap<boost::archive::binary_oarchive>(parameter).str();
+		output.content.model_data = parameter;
 		
 		//hash
 		byte_buffer output_buffer;

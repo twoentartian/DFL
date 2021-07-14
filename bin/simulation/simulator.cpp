@@ -64,17 +64,72 @@ public:
 	dataset_mode_type dataset_mode;
 	std::unordered_map<int, std::tuple<Ml::caffe_parameter_net<model_datatype>, float>> nets_record;
 	int next_train_tick;
-	std::vector<int> non_iid_high_labels;
+	std::unordered_map<int, std::tuple<double, double>> special_non_iid_distribution; //label:{min,max}
 	std::vector<int> training_interval_tick;
 	
 	size_t buffer_size;
-	std::vector<std::tuple<std::string, model_type, Ml::caffe_parameter_net<model_datatype>>> parameter_buffer;
+	std::vector<std::tuple<std::string, Ml::model_compress_type, Ml::caffe_parameter_net<model_datatype>>> parameter_buffer;
 	std::shared_ptr<Ml::MlCaffeModel<model_datatype, caffe::SGDSolver>> solver;
 	std::unordered_map<std::string, double> reputation_map;
-	model_type model_generation_type;
+	Ml::model_compress_type model_generation_type;
 	float filter_limit;
 	std::shared_ptr<std::ofstream> reputation_output;
 };
+
+//return: train_data,train_label
+std::tuple<std::vector<Ml::tensor_blob_like<model_datatype>>,std::vector<Ml::tensor_blob_like<model_datatype>>> get_dataset_by_node_type(Ml::data_converter<model_datatype>& dataset, const node& target_node, int size, const std::vector<int>& ml_dataset_all_possible_labels)
+{
+	Ml::tensor_blob_like<model_datatype> label;
+	label.getShape() = {1};
+	std::vector<Ml::tensor_blob_like<model_datatype>> train_data,train_label;
+	if (target_node.dataset_mode == dataset_mode_type::default_dataset)
+	{
+		//iid dataset
+		std::tie(train_data, train_label) = dataset.get_random_data(size);
+	}
+	else if (target_node.dataset_mode == dataset_mode_type::iid_dataset)
+	{
+		std::random_device dev;
+		std::mt19937 rng(dev());
+		std::uniform_int_distribution<int> distribution(0, int (ml_dataset_all_possible_labels.size()) - 1);
+		for (int i = 0; i < size; ++i)
+		{
+			int label_int = ml_dataset_all_possible_labels[distribution(rng)];
+			label.getData() = {model_datatype (label_int)};
+			auto [train_data_slice, train_label_slice] = dataset.get_random_data_by_Label(label, 1);
+			train_data.insert(train_data.end(), train_data_slice.begin(), train_data_slice.end());
+			train_label.insert(train_label.end(), train_label_slice.begin(), train_label_slice.end());
+		}
+	}
+	else if (target_node.dataset_mode == dataset_mode_type::non_iid_dataset)
+	{
+		//non-iid dataset
+		std::random_device dev;
+		std::mt19937 rng(dev());
+		std::uniform_real_distribution<model_datatype> distribution(ml_non_iid_lower_frequency_lower,ml_non_iid_lower_frequency_upper);
+		std::uniform_real_distribution<model_datatype> dense_distribution(ml_non_iid_higher_frequency_lower,ml_non_iid_higher_frequency_upper);
+		Ml::non_iid_distribution<model_datatype> non_iid_distribution;
+		for (auto& target_label : ml_dataset_all_possible_labels)
+		{
+			label.getData() = {model_datatype (target_label)};
+			auto iter = std::find(single_node.second.non_iid_high_labels.begin(), single_node.second.non_iid_high_labels.end(), target_label);
+			if(iter != single_node.second.non_iid_high_labels.end())
+			{
+				//higher frequency
+				non_iid_distribution.add_distribution(label, dense_distribution(rng));
+			}
+			else
+			{
+				//lower frequency
+				non_iid_distribution.add_distribution(label, distribution(rng));
+			}
+		}
+		std::tie(train_data, train_label) = dataset.get_random_non_iid_dataset(non_iid_distribution, size);
+	}
+	return {train_data, train_label};
+}
+
+
 
 std::unordered_map<std::string, node> node_container;
 dll_loader<reputation_interface<model_datatype>> reputation_dll;
@@ -95,8 +150,15 @@ int main(int argc, char *argv[])
 	//load configuration
 	configuration_file config;
 	config.SetDefaultConfiguration(get_default_simulation_configuration());
-	config.LoadConfiguration("./simulator_config.json");
+	auto load_config_rc = config.LoadConfiguration("./simulator_config.json");
+	if (load_config_rc != configuration_file::NoError)
+	{
+		LOG(FATAL) << "cannot load configuration file, wrong format?";
+		return -1;
+	}
 	auto config_json = config.get_json();
+	//backup configuration file
+	std::filesystem::copy("./simulator_config.json", output_path / "simulator_config.json");
 	
 	//update global var
 	auto ml_solver_proto = *config.get<std::string>("ml_solver_proto");
@@ -136,6 +198,12 @@ int main(int argc, char *argv[])
 		LOG(FATAL) << "unknown model datatype";
 		return -1;
 	}
+	//backup reputation file
+	{
+		std::filesystem::path ml_reputation_dll(ml_reputation_dll_path);
+		std::filesystem::copy(ml_reputation_dll_path, output_path / ml_reputation_dll.filename());
+	}
+
 	
 	//load node configurations
 	auto nodes_json = config_json["nodes"];
@@ -186,11 +254,11 @@ int main(int argc, char *argv[])
 		const std::string model_generation_type_str = single_node["model_generation_type"];
 		if (model_generation_type_str == "filtered")
 		{
-			iter->second.model_generation_type = model_type::filtered;
+			iter->second.model_generation_type = Ml::model_compress_type::compressed_by_diff;
 		}
 		else if (model_generation_type_str == "normal")
 		{
-			iter->second.model_generation_type = model_type::normal;
+			iter->second.model_generation_type = Ml::model_compress_type::normal;
 		}
 		else
 		{
@@ -222,7 +290,7 @@ int main(int argc, char *argv[])
 		{
 			if (target_node.second.name != reputation_node.second.name)
 			{
-				target_node.second.reputation_map[reputation_node.second.name] = 100;
+				target_node.second.reputation_map[reputation_node.second.name] = 1;
 			}
 		}
 	}
@@ -261,54 +329,7 @@ int main(int argc, char *argv[])
 		bool exit = false;
 		for (auto& single_node : node_container)
 		{
-			Ml::tensor_blob_like<model_datatype> label;
-			label.getShape() = {1};
-			
 			std::vector<Ml::tensor_blob_like<model_datatype>> train_data,train_label;
-			if (single_node.second.dataset_mode == dataset_mode_type::default_dataset)
-			{
-				//iid dataset
-				std::tie(train_data, train_label) = train_dataset.get_random_data(ml_train_batch_size);
-			}
-			else if (single_node.second.dataset_mode == dataset_mode_type::iid_dataset)
-			{
-				std::random_device dev;
-				std::mt19937 rng(dev());
-				std::uniform_int_distribution<int> distribution(0, int (ml_dataset_all_possible_labels.size()) - 1);
-				for (int i = 0; i < ml_train_batch_size; ++i)
-				{
-					int label_int = ml_dataset_all_possible_labels[distribution(rng)];
-					label.getData() = {model_datatype (label_int)};
-					auto [train_data_slice, train_label_slice] = train_dataset.get_random_data_by_Label(label, 1);
-					train_data.insert(train_data.end(), train_data_slice.begin(), train_data_slice.end());
-					train_label.insert(train_label.end(), train_label_slice.begin(), train_label_slice.end());
-				}
-			}
-			else if (single_node.second.dataset_mode == dataset_mode_type::non_iid_dataset)
-			{
-				//non-iid dataset
-				std::random_device dev;
-				std::mt19937 rng(dev());
-				std::uniform_real_distribution<model_datatype> distribution(ml_non_iid_lower_frequency_lower,ml_non_iid_lower_frequency_upper);
-				std::uniform_real_distribution<model_datatype> dense_distribution(ml_non_iid_higher_frequency_lower,ml_non_iid_higher_frequency_upper);
-				Ml::non_iid_distribution<model_datatype> non_iid_distribution;
-				for (auto& target_label : ml_dataset_all_possible_labels)
-				{
-					label.getData() = {model_datatype (target_label)};
-					auto iter = std::find(single_node.second.non_iid_high_labels.begin(), single_node.second.non_iid_high_labels.end(), target_label);
-					if(iter != single_node.second.non_iid_high_labels.end())
-					{
-						//higher frequency
-						non_iid_distribution.add_distribution(label, dense_distribution(rng));
-					}
-					else
-					{
-						//lower frequency
-						non_iid_distribution.add_distribution(label, distribution(rng));
-					}
-				}
-				std::tie(train_data, train_label) = train_dataset.get_random_non_iid_dataset(non_iid_distribution, ml_train_batch_size);
-			}
 			
 			//train
 			if (tick >= single_node.second.next_train_tick)
@@ -322,44 +343,22 @@ int main(int argc, char *argv[])
 				single_node.second.solver->train(train_data,train_label);
 				auto parameter_after = single_node.second.solver->get_parameter();
 				auto parameter_output = parameter_after;
-				model_type type;
-				if (single_node.second.model_generation_type == model_type::filtered)
+				Ml::model_compress_type type;
+				if (single_node.second.model_generation_type == Ml::model_compress_type::compressed_by_diff)
 				{
-					auto parameter_diff = parameter_after - parameter_before;
-					
 					//drop models
-					auto& layers = parameter_diff.getLayers();
-					for (int i = 0; i < layers.size(); ++i)
-					{
-						auto& blob = layers[i].getBlob_p();
-						auto& blob_data = blob->getData();
-						if (blob_data.empty())
-						{
-							continue;
-						}
-						auto [max, min] = find_max_min(blob_data.data(), blob_data.size());
-						auto range = max - min;
-						auto lower_bound = min + range * single_node.second.filter_limit * 0.5;
-						auto higher_bound = max - range * single_node.second.filter_limit * 0.5;
-						
-						int drop_count = 0;
-						for (auto&& data: blob_data)
-						{
-							if(data < higher_bound && data > lower_bound)
-							{
-								//drop
-								drop_count++;
-								data = NAN;
-							}
-						}
-						drop_rate << "node:" << single_node.second.name << "    tick:" << tick << "    layer:" << i << "    drop:" << ((float)drop_count) / blob_data.size() << "(" << drop_count << "/" << blob_data.size() << ")" << std::endl;
-					}
-					parameter_output = parameter_diff.dot_divide(parameter_diff).dot_product(parameter_after);
-					type = model_type::filtered;
+					size_t total_weight = 0, dropped_count = 0;
+					auto compressed_model = Ml::model_compress::compress_by_diff_get_model(parameter_before, parameter_after, single_node.second.filter_limit, &total_weight, &dropped_count);
+					std::string compress_model_str = Ml::model_compress::compress_by_diff_lz_compress(compressed_model);
+					drop_rate << "node:" << single_node.second.name << "    tick:" << tick << "    drop:" << ((float)dropped_count) / total_weight << "(" << dropped_count << "/" << total_weight << ")"
+					 << "    compressed_size:" << compress_model_str.size() << std::endl;
+					
+					parameter_output = compressed_model;
+					type = Ml::model_compress_type::compressed_by_diff;
 				}
 				else
 				{
-					type = model_type::normal;
+					type = Ml::model_compress_type::normal;
 				}
 				
 				//add to buffer, and update model if necessary
@@ -385,17 +384,19 @@ int main(int argc, char *argv[])
 							
 							float self_accuracy = 0;
 							std::thread self_accuracy_thread([&updating_node, &test_dataset, &ml_test_batch_size, &self_accuracy](){
-								auto [test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
+								//auto [test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
+								//TODO: use the distribution of own dataset
+								
 								self_accuracy = updating_node.second.solver->evaluation(test_data, test_label);
 							});
 							size_t worker = received_models.size() > std::thread::hardware_concurrency()?std::thread::hardware_concurrency():received_models.size();
 							auto_multi_thread::ParallelExecution(worker, [parameter, &solver_for_testing, &test_dataset, &ml_test_batch_size](uint32_t index, updated_model<model_datatype>& model){
 								auto output_model = parameter;
-								if (model.type == model_type::filtered)
+								if (model.type == Ml::model_compress_type::compressed_by_diff)
 								{
 									output_model.patch_weight(model.model_parameter);
 								}
-								else if (model.type == model_type::normal)
+								else if (model.type == Ml::model_compress_type::normal)
 								{
 									output_model = model.model_parameter;
 								}
@@ -408,7 +409,7 @@ int main(int argc, char *argv[])
 								model.accuracy = solver_for_testing[index].evaluation(test_data, test_label);
 							}, received_models.size(), received_models.data());
 							self_accuracy_thread.join();
-							std::cout << (boost::format("tick: %1%, node: %2%, accuracy: %3%") % tick % single_node.second.name % self_accuracy).str() << std::endl;
+							std::cout << (boost::format("tick: %1%, node: %2%, accuracy: %3%") % tick % updating_node.second.name % self_accuracy).str() << std::endl;
 							auto& reputation_map = updating_node.second.reputation_map;
 							reputation_dll.get()->update_model(parameter, self_accuracy, received_models, reputation_map);
 							updating_node.second.solver->set_parameter(parameter);
@@ -439,6 +440,9 @@ int main(int argc, char *argv[])
 		if (exit) break;
 	}
 	delete[] solver_for_testing;
+	
+	drop_rate.flush();
+	drop_rate.close();
 	
 	//calculating accuracy
 	std::cout << "Begin calculating accuracy" << std::endl;

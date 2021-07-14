@@ -8,7 +8,7 @@
 class reputation_manager
 {
 public:
-	static constexpr double default_reputation = 100.0;
+	static constexpr double default_reputation = 1.0;
 	static constexpr char const *DB_CF_TRANSACTIONS = "transactions";
 	reputation_manager(const std::string &db_path) : _db_path(db_path)
 	{
@@ -41,8 +41,11 @@ public:
 	
 	~reputation_manager()
 	{
-		_db->Close();
-		delete _db;
+//		rocksdb::Status status = _db->DropColumnFamilies(_column_family_handles);
+//		LOG_IF(WARNING, !status.ok()) << "failed to drop the column families in database";
+//		status = _db->Close();
+//		LOG_IF(WARNING, !status.ok()) << "failed to drop the close the reputation manager database";
+//		delete _db;
 	}
 	
 	void get_reputation_map(std::unordered_map<std::string, double>& map)

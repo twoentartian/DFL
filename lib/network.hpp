@@ -20,6 +20,7 @@
 
 // use libuv
 #if NETWORK_USE_LIBUV
+#error LIBUV has been removed from this project
 #include "network-libuv/tcp_server.hpp"
 #include "network-libuv/tcp_client.hpp"
 #include "network-libuv/p2p.hpp"

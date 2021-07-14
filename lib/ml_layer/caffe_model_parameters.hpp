@@ -127,7 +127,7 @@ namespace Ml
 	
 	    bool operator!=(const caffe_parameter_layer<DType>& target) const
 	    {
-		    return !(*this==target);
+		    return *(this->_blob_p) != *(target._blob_p);
 	    }
 	
 	    [[nodiscard]] caffe_parameter_layer<DType> dot_divide(const caffe_parameter_layer<DType>& target) const
@@ -262,7 +262,8 @@ namespace Ml
 		    if(target._layers.size() != this->_layers.size()) return false;
 		    for (int i = 0; i < target._layers.size(); ++i)
 		    {
-			    if(target._layers[i] != this->_layers[i]) return false;
+			    if(target._layers[i] != this->_layers[i])
+			    	return false;
 		    }
 		    return true;
 	    }

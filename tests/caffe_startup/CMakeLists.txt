@@ -21,3 +21,6 @@ target_link_libraries(TEST_Caffe_mutual_train_model_diff caffe caffeproto "${GLO
 
 add_executable(TEST_Caffe_mutual_train_model_diff_non_iid mutual_train_demo_model_diff_none_iid.cpp)
 target_link_libraries(TEST_Caffe_mutual_train_model_diff_non_iid caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}")
+
+add_executable(TEST_Caffe_boost_unit_test boost_test.cpp)
+target_link_libraries(TEST_Caffe_boost_unit_test caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}" "${LZ4_LIBRARIES}")

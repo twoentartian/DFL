@@ -22,9 +22,9 @@ add_subdirectory(${JSON_HOME})
 include_directories(${JSON_HOME}/include)
 
 # uv-cpp
-add_subdirectory(3rd/uv-cpp)
-include_directories(3rd/uv-cpp)
-LINK_DIRECTORIES(3rd/uv-cpp/libuv1.30.0/lib/gcc8.3.0)
+#add_subdirectory(3rd/uv-cpp)
+#include_directories(3rd/uv-cpp)
+#LINK_DIRECTORIES(3rd/uv-cpp/libuv1.30.0/lib/gcc8.3.0)
 
 # uvw
 # add_subdirectory(3rd/uvw)
@@ -33,19 +33,19 @@ LINK_DIRECTORIES(3rd/uv-cpp/libuv1.30.0/lib/gcc8.3.0)
 # OS
 if (WIN32)
     message(STATUS "Operation system is WIN32")
-    set(BOOST_ROOT "C:\\lib\\boost_1_75_0")
+    set(BOOST_ROOT "C:\\lib\\boost_1_76_0")
 elseif(APPLE)
     message(STATUS "Operation system is APPLE")
-    set(BOOST_ROOT "./3rd/boost_1_75_0")
+    set(BOOST_ROOT "./3rd/boost_1_76_0")
 elseif(UNIX)
     message(STATUS "Operation system is UNIX")
-    set(BOOST_ROOT "./3rd/boost_1_75_0")
+    set(BOOST_ROOT "./3rd/boost_1_76_0")
 endif ()
 
 # Boost
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.71.0 REQUIRED COMPONENTS system filesystem serialization unit_test_framework )
+find_package(Boost 1.76.0 REQUIRED COMPONENTS system filesystem serialization unit_test_framework )
 include_directories(${Boost_INCLUDE_DIRS})
 
 # find glog
@@ -76,6 +76,7 @@ include_directories(${RocksDB_INCLUDE_DIR})
 
 #LZ4
 find_package(LZ4 REQUIRED)
+include_directories(${LZ4_INCLUDE_DIR})
 
 list(APPEND Caffe_libs "${CAFFE_LIB}" "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}""${LZ4_LIBRARIES}")
 

@@ -49,11 +49,13 @@ namespace Ml {
             std::memcpy(data_vec, _data.data(), _data.size() * sizeof(DType));
         }
         
+        //warning: vector comparison is only available in C++ 20
         bool operator == (const tensor_blob_like& target) const
         {
 	        return (target._shape == this->_shape) && (target._data == this->_data);
         }
-	
+		
+	    //warning: vector comparison is only available in C++ 20
 	    bool operator != (const tensor_blob_like& target) const
 	    {
 		    return !((target._shape == this->_shape) && (target._data == this->_data));
