@@ -100,11 +100,15 @@ public:
 		
 		rocksdb::Status status;
 		{
-//			std::lock_guard guard(_db_lock);
-//			status = _db->DropColumnFamilies(_column_family_handles);
-//			LOG_IF(WARNING, !status.ok()) << "failed to drop the column families in database";
+			std::lock_guard guard(_db_lock);
+			rocksdb::Status status;
+//			for (auto& handler: _column_family_handles)
+//			{
+//				status = _db->DestroyColumnFamilyHandle(handler);
+//				LOG_IF(WARNING, !status.ok()) << "failed to drop the column families in database";
+//			}
 //			status = _db->Close();
-//			LOG_IF(WARNING, !status.ok()) << "failed to close the dataset database";
+			LOG_IF(WARNING, !status.ok()) << "failed to close the dataset database";
 		}
 //		delete _db;
 	}

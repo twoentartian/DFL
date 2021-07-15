@@ -18,21 +18,21 @@ configuration_file::json get_default_simulation_configuration()
 	output["ml_train_batch_size"] = 64;
 	output["ml_test_interval_tick"] = 10;
 	output["ml_test_batch_size"] = 100;
-	output["ml_non_iid_higher_frequency_lower"] = 10.0;
-	output["ml_non_iid_higher_frequency_upper"] = 15.0;
-	output["ml_non_iid_lower_frequency_lower"] = 3.0;
-	output["ml_non_iid_lower_frequency_upper"] = 4.0;
+	output["ml_non_iid_normal_weight"] = configuration_file::json::array({10.0, 15.0});
 	output["ml_dataset_all_possible_labels"] = configuration_file::json::array({0,1,2,3,4,5,6,7,8,9});
-	output["ml_reputation_dll_path"] = "./libreputation_api_sample.so";
+	output["ml_reputation_dll_path"] = "../reputation_sdk/sample/libreputation_api_sample.so";
 	
 	configuration_file::json node;
+	configuration_file::json node_non_iid = configuration_file::json::object();
+	node_non_iid["1"] = configuration_file::json::array({1.0,2.0});
+	node_non_iid["3"] = configuration_file::json::array({2.0,3.0});
 	node["name"] = "1";
 	node["dataset_mode"] = "default"; //default - randomly choose from dataset, iid - randomly choose from iid labels, non-iid - choose higher frequency labels for specific label
-	node["non_iid_high_labels"] = configuration_file::json::array({0,1});
 	node["training_interval_tick"] = configuration_file::json::array({8,9,10});
 	node["buffer_size"] = 2;
-	node["model_generation_type"] = "filtered"; //normal, filtered
+	node["model_generation_type"] = "compressed"; //normal, compressed
 	node["filter_limit"] = 0.5;
+	node["non_iid_distribution"] = node_non_iid;
 	
 	configuration_file::json nodes = configuration_file::json::array();
 	nodes.push_back(node);

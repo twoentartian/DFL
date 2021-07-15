@@ -6,6 +6,7 @@
 #include <thread_pool.hpp>
 #include <measure_time.hpp>
 #include <ml_layer.hpp>
+#include <configure_file.hpp>
 
 #define BOOST_TEST_MAIN
 
@@ -56,23 +57,19 @@ BOOST_AUTO_TEST_SUITE (miscellaneous_test)
 		std::cout << nan_num/1 << nan_num +1 << std::endl;
 	}
 	
-	BOOST_AUTO_TEST_CASE (fed_avg)
+	BOOST_AUTO_TEST_CASE (configuration_vector)
 	{
-		const std::string solver_path = "../../../dataset/MNIST/lenet_solver_memory.prototxt";
-		Ml::MlCaffeModel<float, caffe::SGDSolver> model;
-		model.load_caffe_model(solver_path);
-		Ml::caffe_parameter_net<float> parameter = model.get_parameter();
-		Ml::fed_avg_buffer<Ml::caffe_parameter_net<float>> parameter_buffer(5);
+		configuration_file configuration;
+		configuration_file::json data;
+		data["1"] = configuration_file::json::array({0,1,2,3,4});
+		std::string data_str = data.dump();
 		
-		parameter_buffer.add(parameter);
-		parameter_buffer.add(parameter);
-		parameter_buffer.add(parameter);
-		parameter_buffer.add(parameter);
-		parameter_buffer.add(parameter);
-		parameter_buffer.add(parameter);
-		parameter_buffer.add(parameter);
-		
-		auto average = parameter_buffer.average_ignore_nan();
+		configuration.LoadConfigurationData(data_str);
+		auto raw_data = *configuration.get_vec<int>("1");
+		for (int i = 0; i < 5; ++i)
+		{
+			BOOST_CHECK(raw_data[i] == i);
+		}
 	}
 	
 BOOST_AUTO_TEST_SUITE_END()

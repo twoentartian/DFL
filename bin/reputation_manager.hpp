@@ -41,8 +41,13 @@ public:
 	
 	~reputation_manager()
 	{
-//		rocksdb::Status status = _db->DropColumnFamilies(_column_family_handles);
-//		LOG_IF(WARNING, !status.ok()) << "failed to drop the column families in database";
+		rocksdb::Status status;
+//		for (auto& handler: _column_family_handles)
+//		{
+//			status = _db->DestroyColumnFamilyHandle(handler);
+//			LOG_IF(WARNING, !status.ok()) << "failed to drop the column families in database";
+//		}
+		
 //		status = _db->Close();
 //		LOG_IF(WARNING, !status.ok()) << "failed to drop the close the reputation manager database";
 //		delete _db;

@@ -64,7 +64,7 @@ public:
 	dataset_mode_type dataset_mode;
 	std::unordered_map<int, std::tuple<Ml::caffe_parameter_net<model_datatype>, float>> nets_record;
 	int next_train_tick;
-	std::unordered_map<int, std::tuple<double, double>> special_non_iid_distribution; //label:{min,max}
+	std::unordered_map<int, std::tuple<float, float>> special_non_iid_distribution; //label:{min,max}
 	std::vector<int> training_interval_tick;
 	
 	size_t buffer_size;
@@ -106,30 +106,27 @@ std::tuple<std::vector<Ml::tensor_blob_like<model_datatype>>,std::vector<Ml::ten
 		//non-iid dataset
 		std::random_device dev;
 		std::mt19937 rng(dev());
-		std::uniform_real_distribution<model_datatype> distribution(ml_non_iid_lower_frequency_lower,ml_non_iid_lower_frequency_upper);
-		std::uniform_real_distribution<model_datatype> dense_distribution(ml_non_iid_higher_frequency_lower,ml_non_iid_higher_frequency_upper);
-		Ml::non_iid_distribution<model_datatype> non_iid_distribution;
+		
+		Ml::non_iid_distribution<model_datatype> label_distribution;
 		for (auto& target_label : ml_dataset_all_possible_labels)
 		{
 			label.getData() = {model_datatype (target_label)};
-			auto iter = std::find(single_node.second.non_iid_high_labels.begin(), single_node.second.non_iid_high_labels.end(), target_label);
-			if(iter != single_node.second.non_iid_high_labels.end())
+			auto iter = target_node.special_non_iid_distribution.find(target_label);
+			if (iter != target_node.special_non_iid_distribution.end())
 			{
-				//higher frequency
-				non_iid_distribution.add_distribution(label, dense_distribution(rng));
+				auto [dis_min,dis_max] = iter->second;
+				std::uniform_real_distribution<model_datatype> distribution(dis_min, dis_max);
+				label_distribution.add_distribution(label, distribution(rng));
 			}
 			else
 			{
-				//lower frequency
-				non_iid_distribution.add_distribution(label, distribution(rng));
+				LOG(ERROR) << "cannot find the desired label";
 			}
 		}
-		std::tie(train_data, train_label) = dataset.get_random_non_iid_dataset(non_iid_distribution, size);
+		std::tie(train_data, train_label) = dataset.get_random_non_iid_dataset(label_distribution, size);
 	}
 	return {train_data, train_label};
 }
-
-
 
 std::unordered_map<std::string, node> node_container;
 dll_loader<reputation_interface<model_datatype>> reputation_dll;
@@ -151,7 +148,7 @@ int main(int argc, char *argv[])
 	configuration_file config;
 	config.SetDefaultConfiguration(get_default_simulation_configuration());
 	auto load_config_rc = config.LoadConfiguration("./simulator_config.json");
-	if (load_config_rc != configuration_file::NoError)
+	if (load_config_rc < 0)
 	{
 		LOG(FATAL) << "cannot load configuration file, wrong format?";
 		return -1;
@@ -171,15 +168,10 @@ int main(int argc, char *argv[])
 	auto ml_train_batch_size = *config.get<int>("ml_train_batch_size");
 	auto ml_test_interval_tick = *config.get<int>("ml_test_interval_tick");
 	auto ml_test_batch_size = *config.get<int>("ml_test_batch_size");
-	auto ml_non_iid_higher_frequency_lower = *config.get<model_datatype>("ml_non_iid_higher_frequency_lower");
-	auto ml_non_iid_higher_frequency_upper = *config.get<model_datatype>("ml_non_iid_higher_frequency_upper");
-	auto ml_non_iid_lower_frequency_lower = *config.get<model_datatype>("ml_non_iid_lower_frequency_lower");
-	auto ml_non_iid_lower_frequency_upper = *config.get<model_datatype>("ml_non_iid_lower_frequency_upper");
-	std::vector<int> ml_dataset_all_possible_labels;
-	for (auto& el : config_json["ml_dataset_all_possible_labels"])
-	{
-		ml_dataset_all_possible_labels.push_back(el);
-	}
+	
+	std::vector<int> ml_dataset_all_possible_labels = *config.get_vec<int>("ml_dataset_all_possible_labels");
+	std::vector<float> ml_non_iid_normal_weight = *config.get_vec<float>("ml_non_iid_normal_weight");
+	LOG_IF(ERROR, ml_non_iid_normal_weight.size() != 2) << "ml_non_iid_normal_weight must be a two-value array, {max min}";
 	auto ml_reputation_dll_path = *config.get<std::string>("ml_reputation_dll_path");
 	
 	//load reputation dll
@@ -203,7 +195,6 @@ int main(int argc, char *argv[])
 		std::filesystem::path ml_reputation_dll(ml_reputation_dll_path);
 		std::filesystem::copy(ml_reputation_dll_path, output_path / ml_reputation_dll.filename());
 	}
-
 	
 	//load node configurations
 	auto nodes_json = config_json["nodes"];
@@ -252,7 +243,7 @@ int main(int argc, char *argv[])
 		
 		//model_generation_type
 		const std::string model_generation_type_str = single_node["model_generation_type"];
-		if (model_generation_type_str == "filtered")
+		if (model_generation_type_str == "compressed")
 		{
 			iter->second.model_generation_type = Ml::model_compress_type::compressed_by_diff;
 		}
@@ -269,11 +260,43 @@ int main(int argc, char *argv[])
 		//filter_limit
 		iter->second.filter_limit = single_node["filter_limit"];
 		
-		//non_iid_high_labels
-		for (auto& el : single_node["non_iid_high_labels"])
+		//label_distribution
+		std::string dataset_mode = single_node["dataset_mode"];
+		if (dataset_mode == "iid")
 		{
-			iter->second.non_iid_high_labels.push_back(el);
+			//nothing to do because the single_node["non_iid_distribution"] will not be used
 		}
+		else if(dataset_mode == "non-iid")
+		{
+			configuration_file::json non_iid_distribution = single_node["non_iid_distribution"];
+			for (auto non_iid_item = non_iid_distribution.begin(); non_iid_item != non_iid_distribution.end(); ++non_iid_item)
+			{
+				int label = std::stoi(non_iid_item.key());
+				auto min_max_array = *non_iid_item;
+				float min = min_max_array.at(0);
+				float max = min_max_array.at(1);
+				iter->second.special_non_iid_distribution[label] = {min,max};
+			}
+			for (auto& el: ml_dataset_all_possible_labels)
+			{
+				auto iter_el = iter->second.special_non_iid_distribution.find(el);
+				if (iter_el == iter->second.special_non_iid_distribution.end())
+				{
+					//not set before
+					iter->second.special_non_iid_distribution[el] = {ml_non_iid_normal_weight[0],ml_non_iid_normal_weight[1]};
+				}
+				
+			}
+		}
+		else if (dataset_mode == "default")
+		{
+			//nothing to do because the single_node["non_iid_distribution"] will not be used
+		}
+		else
+		{
+			LOG(ERROR) << "unknown dataset_mode:" << single_node["dataset_mode"];
+		}
+		
 		
 		//training_interval_tick
 		for (auto& el : single_node["training_interval_tick"])
@@ -330,6 +353,7 @@ int main(int argc, char *argv[])
 		for (auto& single_node : node_container)
 		{
 			std::vector<Ml::tensor_blob_like<model_datatype>> train_data,train_label;
+			std::tie(train_data, train_label) = get_dataset_by_node_type(train_dataset, single_node.second, ml_train_batch_size, ml_dataset_all_possible_labels);
 			
 			//train
 			if (tick >= single_node.second.next_train_tick)
@@ -383,14 +407,13 @@ int main(int argc, char *argv[])
 							}
 							
 							float self_accuracy = 0;
-							std::thread self_accuracy_thread([&updating_node, &test_dataset, &ml_test_batch_size, &self_accuracy](){
+							std::thread self_accuracy_thread([&updating_node, &test_dataset, &ml_test_batch_size, &self_accuracy, &ml_dataset_all_possible_labels](){
 								//auto [test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
-								//TODO: use the distribution of own dataset
-								
+								auto [test_data, test_label] = get_dataset_by_node_type(test_dataset, updating_node.second, ml_test_batch_size, ml_dataset_all_possible_labels);
 								self_accuracy = updating_node.second.solver->evaluation(test_data, test_label);
 							});
 							size_t worker = received_models.size() > std::thread::hardware_concurrency()?std::thread::hardware_concurrency():received_models.size();
-							auto_multi_thread::ParallelExecution(worker, [parameter, &solver_for_testing, &test_dataset, &ml_test_batch_size](uint32_t index, updated_model<model_datatype>& model){
+							auto_multi_thread::ParallelExecution(worker, [parameter, &updating_node, &solver_for_testing, &test_dataset, &ml_test_batch_size, &ml_dataset_all_possible_labels](uint32_t index, updated_model<model_datatype>& model){
 								auto output_model = parameter;
 								if (model.type == Ml::model_compress_type::compressed_by_diff)
 								{
@@ -405,7 +428,7 @@ int main(int argc, char *argv[])
 									LOG(FATAL) << "unknown model type";
 								}
 								solver_for_testing[index].set_parameter(output_model);
-								auto [test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
+								auto [test_data, test_label] = get_dataset_by_node_type(test_dataset, updating_node.second, ml_test_batch_size, ml_dataset_all_possible_labels);
 								model.accuracy = solver_for_testing[index].evaluation(test_data, test_label);
 							}, received_models.size(), received_models.data());
 							self_accuracy_thread.join();

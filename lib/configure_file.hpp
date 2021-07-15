@@ -25,6 +25,19 @@ public:
 		_defaultConfiguration = json;
 	}
 	
+	configuration_file_return_code LoadConfigurationData(const std::string& fileData)
+	{
+		try
+		{
+			_currentConfiguration = json::parse(fileData);
+		}
+		catch (...)
+		{
+			return FileFormatError;
+		}
+		return NoError;
+	}
+	
 	configuration_file_return_code LoadConfiguration(const std::string& filePath, bool generate_if_not_exist = true, bool over_write_if_error = false)
 	{
 		_current_configuration_path = filePath;
@@ -102,12 +115,32 @@ public:
 	}
 	
 	template<typename T>
-	std::optional<T> get(const std::string& key_name) const
+	[[nodiscard]] std::optional<T> get(const std::string& key_name) const
 	{
 		T output;
 		try
 		{
 			output = _currentConfiguration[key_name].get<T>();
+		}
+		catch (...)
+		{
+			return {};
+		}
+		return {output};
+	}
+	
+	template<typename T>
+	[[nodiscard]] std::optional<std::vector<T>> get_vec(const std::string& key_name) const
+	{
+		std::vector<T> output;
+		configuration_file::json json_node;
+		try
+		{
+			json_node = _currentConfiguration[key_name];
+			for (auto iter = json_node.begin(); iter != json_node.end() ; iter++)
+			{
+				output.push_back(iter.value());
+			}
 		}
 		catch (...)
 		{
