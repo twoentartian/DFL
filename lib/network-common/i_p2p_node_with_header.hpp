@@ -37,7 +37,7 @@ namespace network
 			address_type_size
 		};
 		
-		using send_callback = std::function<void(send_packet_status, const char* data, int length)>;
+		using send_callback = std::function<void(send_packet_status, header::COMMAND_TYPE command, const char* data, int length)>;
 		using receive_callback = std::function<std::tuple<header::COMMAND_TYPE, std::string>(header::COMMAND_TYPE command, const char *data, int length)>;
 		
 		virtual void send(const std::string &ip, uint16_t port, i_p2p_node_with_header::address_type type, header::COMMAND_TYPE command, const char *data, size_t size, send_callback callback) = 0;

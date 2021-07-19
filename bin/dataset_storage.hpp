@@ -18,6 +18,7 @@
 #include <boost_serialization_wrapper.hpp>
 #include <util.hpp>
 
+#include "std_output.hpp"
 
 // Database structure
 //------------------------------------
@@ -97,6 +98,10 @@ public:
 	~dataset_storage() noexcept
 	{
 		stop_network_service();
+		
+		LOG(INFO) << "flush dataset database";
+		std_cout::println("flush dataset database");
+		_db->FlushWAL(true);
 		
 		rocksdb::Status status;
 		{

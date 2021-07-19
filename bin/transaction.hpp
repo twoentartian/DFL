@@ -3,6 +3,7 @@
 #include <iostream>
 #include <chrono>
 #include <string>
+#include <unordered_map>
 
 #include <util.hpp>
 #include <crypto.hpp>
@@ -15,11 +16,10 @@
 #include "ml_layer.hpp"
 #include "node_info.hpp"
 
+using TIME_STAMP_TYPE = uint64_t;
 class transaction_without_hash_sig : i_hashable, i_json_serialization
 {
 public:
-	using TIME_STAMP_TYPE = uint64_t;
-	
 	TIME_STAMP_TYPE creation_time;
 	TIME_STAMP_TYPE expire_time;
 	node_info creator;
@@ -78,15 +78,12 @@ private:
 class transaction_receipt_without_hash_sig : i_hashable, i_json_serialization
 {
 public:
-	using TIME_STAMP_TYPE = uint64_t;
-	
 	TIME_STAMP_TYPE creation_time;
 	node_info creator;
 	std::string accuracy;
 	std::string transaction_hash;
 	int receive_at_ttl;
 	
-public:
 	void to_byte_buffer(byte_buffer& target) const
 	{
 		target.add(creation_time);
@@ -117,6 +114,20 @@ public:
 		transaction_hash = json_target["transaction_hash"];
 	}
 	
+	bool operator==(const transaction_receipt_without_hash_sig& target) const
+	{
+		return (creation_time == target.creation_time) &&
+				(creator == target.creator) &&
+				(accuracy == target.accuracy) &&
+				(receive_at_ttl == target.receive_at_ttl) &&
+				(transaction_hash == target.transaction_hash);
+	}
+	
+	bool operator!=(const transaction_receipt_without_hash_sig& target) const
+	{
+		return !operator==(target);
+	}
+	
 private:
 	friend class boost::serialization::access;
 	template<class Archive>
@@ -136,8 +147,7 @@ public:
 	transaction_receipt_without_hash_sig content;
 	std::string hash_sha256;
 	std::string signature;
-
-public:
+	
 	void to_byte_buffer(byte_buffer& target) const
 	{
 		content.to_byte_buffer(target);
@@ -162,6 +172,18 @@ public:
 		signature = json_target["signature"];
 		
 	}
+	
+	bool operator==(const transaction_receipt& target) const
+	{
+		return (content == target.content) &&
+				(hash_sha256 == target.hash_sha256) &&
+				(signature == target.signature);
+	}
+	
+	bool operator!=(const transaction_receipt& target) const
+	{
+		return !operator==(target);
+	}
 
 private:
 	friend class boost::serialization::access;
@@ -174,15 +196,27 @@ private:
 	}
 };
 
-class transaction
+class transaction : i_hashable, i_json_serialization
 {
 public:
 	transaction_without_hash_sig content;
 	std::string hash_sha256;
 	std::string signature;
-	std::vector<transaction_receipt> receipts;
-
-public:
+	std::unordered_map<std::string, transaction_receipt> receipts;
+	
+	void to_byte_buffer(byte_buffer& target) const
+	{
+		content.to_byte_buffer(target);
+		target.add(hash_sha256);
+		target.add(signature);
+		
+		for (auto& iter: receipts)
+		{
+			target.add(iter.first);
+			iter.second.to_byte_buffer(target);
+		}
+	}
+	
 	i_json_serialization::json to_json() const
 	{
 		i_json_serialization::json output;
@@ -192,10 +226,10 @@ public:
 		output["signature"] = signature;
 		
 		//receipts
-		i_json_serialization::json json_receipts = i_json_serialization::json::array();
-		for (int i = 0; i < receipts.size(); ++i)
+		i_json_serialization::json json_receipts = i_json_serialization::json::object();
+		for (auto& [key,value]: receipts)
 		{
-			json_receipts.push_back(receipts[i].to_json());
+			json_receipts[key] = value.to_json();
 		}
 		output["receipts"] = json_receipts;
 		
@@ -210,11 +244,11 @@ public:
 		
 		//receipts
 		i_json_serialization::json json_receipts = json_target["receipts"];
-		for (int i = 0; i < json_receipts.size(); ++i)
+		for (auto& [key,value]: json_receipts.items())
 		{
 			transaction_receipt temp;
-			temp.from_json(json_receipts[i]);
-			receipts.push_back(temp);
+			temp.from_json(value);
+			receipts[key] = temp;
 		}
 		
 	}
@@ -227,6 +261,7 @@ private:
 		ar & content;
 		ar & hash_sha256;
 		ar & signature;
+		ar & receipts;
 	}
 };
 
@@ -240,9 +275,11 @@ public:
 		_private_key = private_key;
 		_public_key = public_key;
 		_address = address;
+		self_node_info.node_address = _address.getTextStr_lowercase();
+		self_node_info.node_pubkey = _public_key.getTextStr_lowercase();
 	}
 	
-	bool verify_key()
+	bool verify_key() const
 	{
 		//check private key and public key
 		std::string data = util::get_random_str();
@@ -261,8 +298,7 @@ public:
 	transaction generate(const std::string& parameter, const std::string& accuracy)
 	{
 		transaction output;
-		output.content.creator.node_pubkey = _public_key.getTextStr_lowercase();
-		output.content.creator.node_address = _address.getTextStr_lowercase();
+		output.content.creator = self_node_info;
 		output.content.accuracy = accuracy;
 		output.content.creation_time = time_util::get_current_utc_time();
 		output.content.expire_time = output.content.creation_time + 60;
@@ -282,8 +318,52 @@ public:
 		return output;
 	}
 
+	enum class append_receipt_status
+	{
+		unknown,
+		success,
+		ttl_expire
+		
+	};
+	
+	std::tuple<append_receipt_status, std::optional<transaction_receipt>> append_receipt(transaction& trans, const std::string& accuracy)
+	{
+		//ttl
+		int current_ttl = trans.content.ttl;
+		for (auto& [previous_receipt_hash, previous_receipt]: trans.receipts)
+		{
+			if (previous_receipt.content.receive_at_ttl < current_ttl)
+			{
+				current_ttl = previous_receipt.content.receive_at_ttl;
+			}
+		}
+		if (current_ttl <= 0) return {append_receipt_status::ttl_expire, std::nullopt};
+		
+		transaction_receipt receipt;
+		receipt.content.creation_time = time_util::get_current_utc_time();
+		receipt.content.accuracy = accuracy;
+		receipt.content.creator = self_node_info;
+		receipt.content.transaction_hash = trans.hash_sha256;
+		receipt.content.receive_at_ttl = current_ttl - 1;
+		
+		//hash
+		byte_buffer output_buffer;
+		receipt.content.to_byte_buffer(output_buffer);
+		auto hash_hex = crypto::sha256::digest_s(output_buffer.data(), output_buffer.size());
+		receipt.hash_sha256 = hash_hex.getTextStr_lowercase();
+		
+		//signature
+		auto signature_hex = crypto::ecdsa_openssl::sign(hash_hex, _private_key);
+		receipt.signature = signature_hex.getTextStr_lowercase();
+		
+		//append receipt
+		trans.receipts[receipt.hash_sha256] = receipt;
+		
+		return {append_receipt_status::success, {receipt}};
+	}
 
 private:
+	node_info self_node_info;
 	crypto::hex_data _private_key;
 	crypto::hex_data _public_key;
 	crypto::hex_data _address;

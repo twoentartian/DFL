@@ -297,13 +297,11 @@ int main(int argc, char *argv[])
 			LOG(ERROR) << "unknown dataset_mode:" << single_node["dataset_mode"];
 		}
 		
-		
 		//training_interval_tick
 		for (auto& el : single_node["training_interval_tick"])
 		{
 			iter->second.training_interval_tick.push_back(el);
 		}
-		
 	}
 	
 	//load node reputation

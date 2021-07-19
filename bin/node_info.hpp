@@ -32,6 +32,16 @@ public:
 		node_address = json_target["node_address"];
 		node_pubkey = json_target["node_pubkey"];
 	}
+	
+	bool operator==(const node_info& target) const
+	{
+		return (node_address == target.node_address) && (node_pubkey == target.node_pubkey);
+	}
+	
+	bool operator!=(const node_info& target) const
+	{
+		return !operator==(target);
+	}
 
 private:
 	friend class boost::serialization::access;

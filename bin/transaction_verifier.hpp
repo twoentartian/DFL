@@ -43,9 +43,9 @@ std::tuple<bool, std::string> verify_transaction(const transaction& trans)
 	if (time_now < trans.content.creation_time - 10)
 	{
 		pass = false;
-		return {pass, (boost::format("transaction(%3%), creation time(%1%) > now(%2%)") % trans.content.creation_time % time_now % trans.hash_sha256).str() };
+		return {pass, (boost::format("transaction(%3%), creation time(%1%) - 10 > now(%2%)") % trans.content.creation_time % time_now % trans.hash_sha256).str() };
 	}
-	if (time_now > trans.content.creation_time)
+	if (time_now > trans.content.expire_time)
 	{
 		pass = false;
 		return {pass, (boost::format("transaction(%3%), expired time(%1%) < now(%2%)") % trans.content.expire_time % time_now % trans.hash_sha256).str() };
@@ -67,15 +67,13 @@ std::tuple<bool, std::string> verify_transaction(const transaction& trans)
 		return {status, (boost::format("transaction(%2%), %1%") % message % trans.hash_sha256).str()};
 	
 	//verify receipt
-	for (int i = 0; i < trans.receipts.size(); ++i)
+	for (auto& [receipt_hash, receipt]: trans.receipts)
 	{
-		auto& receipt = trans.receipts[i];
-		
 		//verify time
 		if (time_now < receipt.content.creation_time - 10)
 		{
 			pass = false;
-			return {pass, (boost::format("transaction(%3%), receipt (%4%), creation time(%1%) > now(%2%)") % trans.content.creation_time % time_now % trans.hash_sha256 % receipt.hash_sha256).str() };
+			return {pass, (boost::format("transaction(%3%), receipt (%4%), creation time(%1%) - 10 > now(%2%)") % trans.content.creation_time % time_now % trans.hash_sha256 % receipt.hash_sha256).str() };
 		}
 		
 		//verify transaction generator

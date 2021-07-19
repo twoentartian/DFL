@@ -41,6 +41,10 @@ public:
 	
 	~reputation_manager()
 	{
+		LOG(INFO) << "flush reputation database";
+		std_cout::println("flush reputation database");
+		_db->FlushWAL(true);
+		
 		rocksdb::Status status;
 //		for (auto& handler: _column_family_handles)
 //		{

@@ -11,6 +11,9 @@ configuration_file::json get_default_configuration()
 	output["blockchain_private_key"] = "e321c369d8b1ff39aeabadc7846735e4fe5178af41b87eb421a6773c8c4810c3";
 	output["blockchain_address"] = "a49487e4550b9961af17161900c8496a4ddc0638979d3c4f9b305d2b4dc0c665";
 	
+	output["blockchain_block_db_path"] = "./blocks";
+	output["blockchain_estimated_block_size"] = 10;
+	
 	output["ml_solver_proto_path"] = "../../../dataset/MNIST/lenet_solver_memory.prototxt";
 	output["ml_test_batch_size"] = 100;
 	output["ml_model_stream_type"] = "compressed";  //compressed or normal

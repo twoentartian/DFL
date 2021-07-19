@@ -7,6 +7,7 @@
 #include <measure_time.hpp>
 #include <ml_layer.hpp>
 #include <configure_file.hpp>
+#include <duplicate_checker.hpp>
 
 #define BOOST_TEST_MAIN
 
@@ -70,6 +71,16 @@ BOOST_AUTO_TEST_SUITE (miscellaneous_test)
 		{
 			BOOST_CHECK(raw_data[i] == i);
 		}
+	}
+	
+	BOOST_AUTO_TEST_CASE (duplicate_checker_test)
+	{
+		duplicate_checker<int> checker(5, 1);
+		BOOST_CHECK(checker.find(1) == false);
+		checker.add(1);
+		BOOST_CHECK(checker.find(1) == true);
+		std::this_thread::sleep_for(std::chrono::seconds(6));
+		BOOST_CHECK(checker.find(1) == false);
 	}
 	
 BOOST_AUTO_TEST_SUITE_END()

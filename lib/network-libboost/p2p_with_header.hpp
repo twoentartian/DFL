@@ -31,7 +31,7 @@ namespace network
 			std::condition_variable cv;
 			i_p2p_node_with_header::send_packet_status p2p_status = i_p2p_node_with_header::send_packet_not_specified;
 			std::shared_ptr<simple::tcp_client_with_header> client = simple::tcp_client_with_header::CreateClient();
-
+			header::COMMAND_TYPE received_command;
 			client->SetConnectHandler([&ip, &port, &data, &size, &cv, &command, &p2p_status, this](tcp_status status, std::shared_ptr<simple::tcp_client> client)
 			                          {
 				                          if (status == tcp_status::Success)
@@ -64,11 +64,12 @@ namespace network
 					                          cv.notify_one();
 				                          }
 			                          });
-			client->SetReceiveHandler_with_header([&cv, &received_data, &p2p_status](header::COMMAND_TYPE command, std::shared_ptr<std::string> data, std::shared_ptr<simple::tcp_client_with_header> client)
+			client->SetReceiveHandler_with_header([&cv, &received_data, &p2p_status, &received_command](header::COMMAND_TYPE command, std::shared_ptr<std::string> data, std::shared_ptr<simple::tcp_client_with_header> client)
 			                                      {
 				                                      received_data.assign(*data);
 				                                      p2p_status = i_p2p_node_with_header::send_packet_success;
 				                                      cv.notify_one();
+				                                      received_command = command;
 			                                      });
 			client->SetCloseHandler([this](const std::string &ip, uint16_t port)
 			                        {
@@ -85,7 +86,7 @@ namespace network
 			client->Disconnect();
 			if (callback != nullptr)
 			{
-				callback(p2p_status, received_data.data(), received_data.size());
+				callback(p2p_status, received_command, received_data.data(), received_data.size());
 			}
 		}
 		

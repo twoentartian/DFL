@@ -199,6 +199,15 @@ namespace crypto
 #endif
     };
 
+	template <typename T>
+	hex_data sha256_digest(T target)
+	{
+		byte_buffer buffer;
+		target.to_byte_buffer(buffer);
+		hex_data output = sha256::digest_s(buffer.data(), buffer.size());
+		return output;
+	}
+	
 }
 
 #undef SHA2_SHFR
