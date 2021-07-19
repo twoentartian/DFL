@@ -81,7 +81,6 @@ public:
 	node_info creator;
 	std::unordered_map<std::string, transaction> transaction_container;
 	TIME_STAMP_TYPE block_generated_time;
-
 	
 	std::string genesis_content;
 	std::string genesis_block_hash;
@@ -116,7 +115,15 @@ public:
 		output["transaction_container"] = transaction_container_json;
 		output["block_generated_time"] = block_generated_time;
 		
-		output["genesis_content"] = genesis_content;
+		if (!genesis_content.empty())
+		{
+			output["genesis_content"] = Base64::Encode(genesis_content);////genesis content is base64 encoded
+		}
+		else
+		{
+			output["genesis_content"] = "";
+		}
+
 		output["genesis_block_hash"] = genesis_block_hash;
 		output["memo"] = memo;
 		
@@ -135,10 +142,16 @@ public:
 			temp_trans.from_json(value);
 			transaction_container[key] = temp_trans;
 		}
-		
 		block_generated_time = json_target["block_generated_time"];
-		
-		genesis_content = json_target["genesis_content"];
+		std::string genesis_content_str = json_target["genesis_content"];
+		if (genesis_content_str.empty())
+		{
+			genesis_content = "";
+		}
+		else
+		{
+			Base64::Decode(genesis_content_str, genesis_content);
+		}
 		genesis_block_hash = json_target["genesis_block_hash"];
 		memo = json_target["memo"];
 	}
@@ -149,6 +162,7 @@ private:
 	void serialize(Archive & ar, const unsigned int version)
 	{
 		ar & previous_block_hash;
+		ar & creator;
 		ar & transaction_container;
 		ar & block_generated_time;
 		ar & genesis_content;
@@ -160,7 +174,7 @@ private:
 class block : i_hashable, i_json_serialization
 {
 public:
-	size_t height;
+	uint64_t height;
 	block_content content;
 	std::string block_content_hash;
 	
@@ -224,6 +238,7 @@ private:
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int version)
 	{
+		ar & height;
 		ar & content;
 		ar & block_content_hash;
 		ar & block_confirmation_container;

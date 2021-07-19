@@ -50,15 +50,27 @@ public:
 	void set_genesis_content(const std::string genesis_content)
 	{
 		block genesis_block;
+		genesis_block.content.creator.node_pubkey = "";
+		genesis_block.content.creator.node_address = "";
+		genesis_block.content.transaction_container.clear();
+		genesis_block.content.block_generated_time = 0;
+		genesis_block.content.memo = "";
+		genesis_block.content.previous_block_hash = "";
+		genesis_block.content.genesis_block_hash = "";
 		genesis_block.content.genesis_content = genesis_content;
-		byte_buffer genesis_block_buffer;
-		genesis_block.content.to_byte_buffer(genesis_block_buffer);
-		auto hash = crypto::sha256::digest_s(genesis_block_buffer.data(), genesis_block_buffer.size());
-		std::string hash_str = hash.getTextStr_lowercase();
-
+		
+		genesis_block.block_content_hash = crypto::sha256_digest(genesis_block.content).getTextStr_lowercase();
+		genesis_block.height = 0;
+		genesis_block.block_confirmation_container.clear();
+		genesis_block.block_finalization_time = 0;
+		
+		auto hash = crypto::sha256_digest(genesis_block);
+		_genesis_hash = hash.getTextStr_lowercase();
+		genesis_block.final_hash = _genesis_hash;
+		
 		if (_height == 0)
 		{
-			genesis_block.final_hash = hash_str;
+			genesis_block.final_hash = _genesis_hash;
 			store_block(genesis_block);
 			_previous_block_hash = _genesis_hash;
 		}
@@ -68,16 +80,13 @@ public:
 			auto status = _db_blocks->Get(rocksdb::ReadOptions(), "0", &genesis_content_db);
 			LOG_IF(ERROR, !status.ok()) << "[block] failed to access block database";
 			block genesis_block_db = deserialize_wrap<boost::archive::binary_iarchive, block>(genesis_content_db);
-			if (genesis_block_db.final_hash != hash_str)
+			if (genesis_block_db.final_hash != _genesis_hash)
 			{
 				LOG(ERROR) << "[block] genesis block mismatch";
 				return;
 			}
 			load_previous_hash_from_db();
 		}
-		_genesis_hash = hash_str;
-		
-		
 	}
 	
 	std::optional<block> generate_block(const std::vector<transaction>& transactions)
@@ -89,7 +98,10 @@ public:
 		
 		_current_generated_block.reset(new block());
 		if (_genesis_hash.empty()) LOG(ERROR) << "[block] genesis hash not set";
+
 		_current_generated_block->height = _height;
+		_current_generated_block->content.creator.node_address = global_var::address.getTextStr_lowercase();
+		_current_generated_block->content.creator.node_pubkey = global_var::public_key.getTextStr_lowercase();
 		_current_generated_block->content.genesis_block_hash = _genesis_hash;
 		_current_generated_block->content.previous_block_hash = _previous_block_hash;
 		_current_generated_block->content.block_generated_time = time_util::get_current_utc_time();
@@ -208,13 +220,16 @@ private:
 	{
 		//check height
 		_height = 0;
+		bool empty = true;
 		std::string value;
 		rocksdb::Iterator* it = _db_blocks->NewIterator(rocksdb::ReadOptions());
 		for (it->SeekToFirst(); it->Valid(); it->Next())
 		{
+			empty = false;
 			uint64_t target_height = std::stoi(it->key().ToString());
 			if (target_height > _height) _height = target_height;
 		}
+		if (!empty) _height++;
 	}
 	
 	/**
