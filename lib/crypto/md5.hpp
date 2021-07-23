@@ -88,6 +88,7 @@ namespace crypto
 		    state[1] = 0xefcdab89;
 		    state[2] = 0x98badcfe;
 		    state[3] = 0x10325476;
+		    finalized = false;
 	    }
 	
 	    void decode(uint32_t *output, const uint8_t *input,uint32_t len)
@@ -197,7 +198,7 @@ namespace crypto
 	    void update(const uint8_t *input, uint32_t length)
 	    {
 		    uint32_t index = count[0] / 8 % BLOCK_SIZE;
-		
+		    
 		    // Update number of bits
 		    if ((count[0] += (length << 3)) < (length << 3))
 			    count[1]++;
@@ -230,6 +231,7 @@ namespace crypto
 				    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 		    };
+		    
 		    if(!finalized)
 		    {
 			    uint8_t bits[8];
