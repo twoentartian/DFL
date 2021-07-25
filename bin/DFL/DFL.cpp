@@ -50,6 +50,22 @@ void generate_block()
 	LOG(INFO) << "generating block";
 	std_cout::println("[DFL] generating block");
 	auto cached_transactions_with_receipt = main_transaction_storage_for_block->dump_block_cache(std::ceil(float(global_var::peer_count)/2));
+	if (cached_transactions_with_receipt.empty())
+	{
+		std::stringstream ss;
+		ss << "no transactions are confirmed, cannot generate block";
+		LOG(INFO) << ss.str();
+		std_cout::println(ss.str());
+		return;
+	}
+	else
+	{
+		std::stringstream ss;
+		ss << "block transaction size: " << cached_transactions_with_receipt.size();
+		LOG(INFO) << ss.str();
+		std_cout::println(ss.str());
+	}
+	
 	auto generated_block = *main_block_manager->generate_block(cached_transactions_with_receipt);
 	
 	std::vector<block_confirmation> confirmations = main_transaction_tran_rece->broadcast_block_and_receive_confirmation(generated_block);
