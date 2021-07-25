@@ -12,6 +12,7 @@ public:
 		
 		Ml::caffe_parameter_net<DType> zero_parameter = models[0].model_parameter - models[0].model_parameter;
 		zero_parameter.set_all(0);
+		std::unordered_map<std::string, double> reputation_copy = reputation;
 		
 		//calculate average accuracy
 		Ml::fed_avg_buffer<Ml::caffe_parameter_net<DType>> parameter_buffers(models.size());
@@ -40,12 +41,12 @@ public:
 			if(models[i].type == Ml::model_compress_type::normal)
 			{
 				counter_normal++;
-				parameter_buffers.add(models[i].model_parameter * (1 + models[i].accuracy - average_accuracy) * (1 + reputation[models[i].generator_address] - average_reputation));
+				parameter_buffers.add(models[i].model_parameter * (1 + models[i].accuracy - average_accuracy) * (1 + reputation_copy[models[i].generator_address] - average_reputation));
 			}
 			else if (models[i].type == Ml::model_compress_type::compressed_by_diff)
 			{
 				counter_filtered++;
-				parameter_buffers_filtered.add(models[i].model_parameter * (1 + models[i].accuracy - average_accuracy) * (1 + reputation[models[i].generator_address] - average_reputation));
+				parameter_buffers_filtered.add(models[i].model_parameter * (1 + models[i].accuracy - average_accuracy) * (1 + reputation_copy[models[i].generator_address] - average_reputation));
 			}
 			else
 			{

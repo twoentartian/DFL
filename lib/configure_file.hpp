@@ -153,6 +153,18 @@ public:
 	{
 		return _currentConfiguration;
 	}
+	
+	configuration_file_return_code write_back()
+	{
+		const std::string configuration_content = _currentConfiguration.dump(4);
+		std::ofstream ofs;
+		ofs.open(_current_configuration_path, std::ios::binary | std::ios::out);
+		if (!ofs.is_open()) return InvalidPath;
+		ofs << configuration_content;
+		ofs.flush();
+		ofs.close();
+		return NoError;
+	}
 
 private:
 	std::string _current_configuration_path;

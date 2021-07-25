@@ -129,6 +129,13 @@ namespace Ml
 	    {
 		    return *(this->_blob_p) != *(target._blob_p);
 	    }
+	    
+	    bool roughly_equal(const caffe_parameter_layer<DType>& target, DType diff_threshold) const
+	    {
+		    if (this->_blob_p->empty() != target._blob_p->empty()) return false;
+		    if (!this->_blob_p->empty()) return this->_blob_p->roughly_equal(*target._blob_p, diff_threshold);
+		    return true;
+	    }
 	
 	    [[nodiscard]] caffe_parameter_layer<DType> dot_divide(const caffe_parameter_layer<DType>& target) const
 	    {
@@ -154,6 +161,24 @@ namespace Ml
 	    {
 		    if (!_blob_p) return;
 	    	_blob_p->set_all(value);
+	    }
+	    
+	    void random(DType min, DType max)
+	    {
+		    if (!_blob_p) return;
+		    _blob_p->random(min, max);
+	    }
+	
+	    DType sum()
+	    {
+		    if (this->_blob_p->empty()) return 0;
+		    return this->_blob_p->sum();
+	    }
+	
+	    size_t size()
+	    {
+		    if (this->_blob_p->empty()) return 0;
+		    return this->_blob_p->size();
 	    }
 	    
 	    void patch_weight(const caffe_parameter_layer<DType>& patch, DType ignore = NAN)
@@ -273,6 +298,17 @@ namespace Ml
         	return !(*this==target);
 	    }
 	
+	    bool roughly_equal(const caffe_parameter_net<DType>& target, DType diff_threshold) const
+	    {
+		    if(target._layers.size() != this->_layers.size()) return false;
+		    for (int i = 0; i < target._layers.size(); ++i)
+		    {
+			    if(!target._layers[i].roughly_equal(this->_layers[i], diff_threshold))
+				    return false;
+		    }
+		    return true;
+	    }
+	
 	    [[nodiscard]] caffe_parameter_net<DType> dot_divide(const caffe_parameter_net<DType>& target) const
 	    {
 		    caffe_parameter_net<DType> output = *this;
@@ -299,6 +335,34 @@ namespace Ml
 		    {
 			    single_layer.set_all(value);
 		    }
+	    }
+	    
+	    void random(DType min, DType max)
+	    {
+		    for (auto& single_layer: _layers)
+		    {
+			    single_layer.random(min, max);
+		    }
+	    }
+	
+	    DType sum()
+	    {
+        	DType output = 0;
+		    for (auto& single_layer: _layers)
+		    {
+			    output += single_layer.sum();
+		    }
+		    return output;
+	    }
+	
+	    size_t size()
+	    {
+		    size_t output = 0;
+		    for (auto& single_layer: _layers)
+		    {
+			    output += single_layer.size();
+		    }
+		    return output;
 	    }
 	
 	    void patch_weight(const caffe_parameter_net<DType>& patch, DType ignore = NAN)

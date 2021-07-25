@@ -3,6 +3,7 @@
 #define C_TENSOR_BLOB_LIKE_H
 
 #include <sstream>
+#include <random>
 #include <boost/serialization/access.hpp>
 #include <caffe/data_transformer.hpp>
 #include <boost/container_hash/hash.hpp>
@@ -159,6 +160,29 @@ namespace Ml {
 				single_value = value;
 	        }
         }
+        
+        void random(DType min, DType max)
+        {
+        	std::random_device rd;
+        	std::uniform_real_distribution distribution(min, max);
+	        for (auto& single_value: _data)
+	        {
+		        single_value = distribution(rd);
+	        }
+        }
+        
+        bool roughly_equal(const tensor_blob_like& target, DType diff_threshold) const
+        {
+	        if (target._shape != this->_shape)
+	        {
+		        return false;
+	        }
+	        for (int i = 0; i < this->_data.size(); ++i)
+	        {
+		        if (diff_threshold > std::abs(this->_data[i] - target._data[i])) return false;
+	        }
+	        return true;
+        }
 	
 	    void patch_weight(const tensor_blob_like<DType>& patch, DType ignore = NAN)
 	    {
@@ -200,6 +224,21 @@ namespace Ml {
 			    output << std::to_string(data);
 		    }
 		    return output.str();
+	    }
+	    
+	    DType sum()
+	    {
+            DType output = 0;
+		    for (const auto& value: _data)
+		    {
+				output += value;
+		    }
+		    return output;
+	    }
+	    
+	    size_t size()
+	    {
+		    return _data.size();
 	    }
      
     private:

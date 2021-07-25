@@ -24,6 +24,7 @@
 #include "../reputation_sdk.hpp"
 #include "../transaction_storage_for_block.hpp"
 #include "../block_manager.hpp"
+#include "../reputation_dll_test.hpp"
 
 constexpr char LOG_PATH[] = "./log/";
 using model_datatype = float;
@@ -264,11 +265,11 @@ int main(int argc, char **argv)
 	config.LoadConfiguration("./config.json");
 	
 	//load reputation dll
-	if (std::is_same_v<model_datatype, float>)
+	if constexpr(std::is_same_v<model_datatype, float>)
 	{
 		reputation_dll.load(*config.get<std::string>("reputation_dll_path"), export_class_name_reputation_float);
 	}
-	else if (std::is_same_v<model_datatype, double>)
+	else if constexpr(std::is_same_v<model_datatype, double>)
 	{
 		reputation_dll.load(*config.get<std::string>("reputation_dll_path"), export_class_name_reputation_double);
 	}
@@ -343,8 +344,20 @@ int main(int argc, char **argv)
 	}
 	main_transaction_tran_rece->set_receive_transaction_callback(receive_transaction);
 	
-
-	
+	//perform reputation test
+	Ml::caffe_parameter_net<model_datatype> model = model_train->get_parameter();
+	{
+		auto [pass, info] = reputation_dll_same_reputation_test(reputation_dll, model);
+		std::stringstream ss;
+		ss << "[reputation dll] [same reputation test] " << (pass?"pass":"fail") << ": " << info;
+		std_cout::println(ss.str());
+	}
+	{
+		auto [pass, info] = reputation_dll_same_model_test(reputation_dll, model);
+		std::stringstream ss;
+		ss << "[reputation dll] [same model test] " << (pass?"pass":"fail") << ": " << info;
+		std_cout::println(ss.str());
+	}
 	
 	std::cout << "press any key to exit" << std::endl;
 	std::cin.get();
