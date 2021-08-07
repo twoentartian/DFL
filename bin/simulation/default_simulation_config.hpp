@@ -42,5 +42,7 @@ configuration_file::json get_default_simulation_configuration()
 	
 	output["nodes"] = nodes;
 	
+	output["node_topology"] = configuration_file::json::array({"fully_connect", "average_degree-2", "1->2", "1--2"});
+	
 	return output;
 }

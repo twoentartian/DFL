@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
 		for (auto single_label : all_labels)
 		{
 			float value = gamma(rd);
-			dis_json[std::to_string(single_label)] = value;
+			dis_json[std::to_string(single_label)] = {value,value};
 			std::cout << "node-" << node["name"] << " label-" << single_label << " dis: " << value << std::endl;
 		}
 	}
