@@ -1,0 +1,2 @@
+add_executable(TEST_model_parameter_manager_test test_model_parameter_manager.cpp)
+target_link_libraries(TEST_model_parameter_manager_test caffe caffeproto "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${ROCKSDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${Boost_LIBRARIES}" "${OPENSSL_CRYPTO_LIBRARY}")
