@@ -11,6 +11,7 @@
 #include <thread_pool.hpp>
 #include <dll_importer.hpp>
 #include <duplicate_checker.hpp>
+#include <performance_profiler.hpp>
 
 #include "../transaction.hpp"
 #include "../global_var.hpp"
@@ -47,6 +48,10 @@ std::mutex exit_cv_lock;
 
 void generate_block()
 {
+	std::shared_ptr<profiler_auto> profiler_p;
+	if (global_var::enable_profiler)
+		profiler_p.reset(new profiler_auto("generate_block"));
+	
 	LOG(INFO) << "generating block";
 	std_cout::println("[DFL] generating block");
 	auto cached_transactions_with_receipt = main_transaction_storage_for_block->dump_block_cache(std::ceil(float(global_var::peer_count)/2));
@@ -68,7 +73,18 @@ void generate_block()
 	
 	auto generated_block = *main_block_manager->generate_block(cached_transactions_with_receipt);
 	
-	std::vector<block_confirmation> confirmations = main_transaction_tran_rece->broadcast_block_and_receive_confirmation(generated_block);
+	std::vector<block_confirmation> confirmations;
+	{
+		if (global_var::enable_profiler)
+		{
+			profiler_auto profiler_confirm("generate_block/gather_confirmation");
+			confirmations = main_transaction_tran_rece->broadcast_block_and_receive_confirmation(generated_block);
+		}
+		else
+		{
+			confirmations = main_transaction_tran_rece->broadcast_block_and_receive_confirmation(generated_block);
+		}
+	}
 	for (auto& confirmation: confirmations)
 	{
 		main_block_manager->append_block_confirmation(confirmation);
@@ -83,6 +99,10 @@ void generate_block()
 
 void generate_transaction(const std::vector<Ml::tensor_blob_like<model_datatype>> &data, const std::vector<Ml::tensor_blob_like<model_datatype>> &label)
 {
+	std::shared_ptr<profiler_auto> profiler_p;
+	if (global_var::enable_profiler)
+		profiler_p.reset(new profiler_auto("generate_transaction"));
+	
 	Ml::caffe_parameter_net<model_datatype> net_after,net_before;
 	float accuracy;
 	{
@@ -90,7 +110,12 @@ void generate_transaction(const std::vector<Ml::tensor_blob_like<model_datatype>
 		net_before = model_train->get_parameter();
 		model_train->train(data, label, false);
 		auto[test_dataset_data, test_dataset_label] = main_dataset_storage->get_random_data(global_var::ml_test_batch_size);
-		accuracy = model_train->evaluation(test_dataset_data, test_dataset_label);
+		{
+			std::shared_ptr<profiler_auto> profiler_p;
+			if (global_var::enable_profiler)
+				profiler_p.reset(new profiler_auto("generate_transaction/measure_accuracy"));
+			accuracy = model_train->evaluation(test_dataset_data, test_dataset_label);
+		}
 		LOG(INFO) << "training complete, accuracy: " << accuracy;
 		std_cout::println("[DFL] training complete, accuracy: " + std::to_string(accuracy));
 		net_after = model_train->get_parameter();
@@ -115,10 +140,17 @@ void generate_transaction(const std::vector<Ml::tensor_blob_like<model_datatype>
 	main_transaction_storage_for_block->add_to_block_cache(trans);
 	if (main_transaction_storage_for_block->block_cache_size() >= global_var::estimated_transaction_per_block)
 	{
+		std::shared_ptr<profiler_auto> profiler_triggered_generating_block;
+		if (global_var::enable_profiler)
+			profiler_triggered_generating_block.reset(new profiler_auto("generate_transaction/triggered_generating_block"));
+		
 		//trigger dump
 		generate_block();
 	}
 	
+	std::shared_ptr<profiler_auto> profiler_broadcast;
+	if (global_var::enable_profiler)
+		profiler_broadcast.reset(new profiler_auto("generate_transaction/broadcast_transaction"));
 	main_transaction_tran_rece->broadcast_transaction(trans);
 	
 	//record transaction
@@ -127,6 +159,10 @@ void generate_transaction(const std::vector<Ml::tensor_blob_like<model_datatype>
 
 void receive_transaction(const transaction& trans)
 {
+	std::shared_ptr<profiler_auto> profiler_p;
+	if (global_var::enable_profiler)
+		profiler_p.reset(new profiler_auto("receive_transaction"));
+	
 	static duplicate_checker<std::string> transaction_duplicate_checker(3600);
 	
 	//verify transaction
@@ -161,30 +197,37 @@ void receive_transaction(const transaction& trans)
 	std_cout::println("receive transaction with hash " + trans.hash_sha256);
 	
 	//calculate accuracy
-	auto [model_parameter, model_type] = Ml::model_interpreter<model_datatype>::parse_model_stream(trans.content.model_data);
-	auto[test_dataset_data, test_dataset_label] = main_dataset_storage->get_random_data(global_var::ml_test_batch_size);
-	if (test_dataset_data.empty())
-	{
-		LOG(ERROR) << "empty dataset db, cannot perform accuracy test";
-		return;
-	}
 	float accuracy;
-	if (model_type == Ml::model_compress_type::compressed_by_diff)
 	{
-		Ml::caffe_parameter_net<model_datatype> parameter = model_train->get_parameter();
-		auto self_parameter_copy = parameter;
-		self_parameter_copy.patch_weight(model_parameter);
-		model_test->set_parameter(self_parameter_copy);
-		accuracy = model_test->evaluation(test_dataset_data, test_dataset_label);
-	}
-	else if (model_type == Ml::model_compress_type::normal)
-	{
-		model_test->set_parameter(model_parameter);
-		accuracy = model_test->evaluation(test_dataset_data, test_dataset_label);
-	}
-	else
-	{
-		LOG(WARNING) << "unknown ml_model_stream_type";
+		std::shared_ptr<profiler_auto> profiler_calculate_accuracy;
+		if (global_var::enable_profiler)
+			profiler_calculate_accuracy.reset(new profiler_auto("receive_transaction/calculate_accuracy"));
+		
+		auto [model_parameter, model_type] = Ml::model_interpreter<model_datatype>::parse_model_stream(trans.content.model_data);
+		auto[test_dataset_data, test_dataset_label] = main_dataset_storage->get_random_data(global_var::ml_test_batch_size);
+		if (test_dataset_data.empty())
+		{
+			LOG(ERROR) << "empty dataset db, cannot perform accuracy test";
+			return;
+		}
+		
+		if (model_type == Ml::model_compress_type::compressed_by_diff)
+		{
+			Ml::caffe_parameter_net<model_datatype> parameter = model_train->get_parameter();
+			auto self_parameter_copy = parameter;
+			self_parameter_copy.patch_weight(model_parameter);
+			model_test->set_parameter(self_parameter_copy);
+			accuracy = model_test->evaluation(test_dataset_data, test_dataset_label);
+		}
+		else if (model_type == Ml::model_compress_type::normal)
+		{
+			model_test->set_parameter(model_parameter);
+			accuracy = model_test->evaluation(test_dataset_data, test_dataset_label);
+		}
+		else
+		{
+			LOG(WARNING) << "unknown ml_model_stream_type";
+		}
 	}
 	
 	//append receipt
@@ -197,6 +240,10 @@ void receive_transaction(const transaction& trans)
 		
 		//add the new transaction and broadcast
 		main_transaction_storage->add(new_transaction);
+		
+		std::shared_ptr<profiler_auto> profiler_broadcast_new_transaction;
+		if (global_var::enable_profiler)
+			profiler_broadcast_new_transaction.reset(new profiler_auto("receive_transaction/broadcast_generated_transaction"));
 		main_transaction_tran_rece->broadcast_transaction(new_transaction);
 	}
 }
@@ -204,6 +251,10 @@ void receive_transaction(const transaction& trans)
 // args: transactions should contain the receipt generated by self
 void update_model(std::shared_ptr<std::vector<transaction>> transactions)
 {
+	std::shared_ptr<profiler_auto> profiler_p;
+	if (global_var::enable_profiler)
+		profiler_p.reset(new profiler_auto("update_model"));
+	
 	static std::mutex update_model_reputation_lock;
 	std::lock_guard guard(update_model_reputation_lock);
 	
@@ -221,8 +272,14 @@ void update_model(std::shared_ptr<std::vector<transaction>> transactions)
 	
 	Ml::caffe_parameter_net<model_datatype> parameter = model_train->get_parameter();
 	
-	auto[test_dataset_data, test_dataset_label] = main_dataset_storage->get_random_data(global_var::ml_test_batch_size);
-	double self_accuracy = model_train->evaluation(test_dataset_data, test_dataset_label);
+	double self_accuracy;
+	{
+		std::shared_ptr<profiler_auto> profiler_calculate_self_accuracy;
+		if (global_var::enable_profiler)
+			profiler_calculate_self_accuracy.reset(new profiler_auto("update_model/calculate_self_accuracy"));
+		auto[test_dataset_data, test_dataset_label] = main_dataset_storage->get_random_data(global_var::ml_test_batch_size);
+		self_accuracy = model_train->evaluation(test_dataset_data, test_dataset_label);
+	}
 	
 	std::vector<updated_model<model_datatype>> received_models;
 	received_models.resize(transactions->size());
@@ -274,6 +331,7 @@ int main(int argc, char **argv)
 	std::filesystem::path log_path(LOG_PATH);
 	if (!std::filesystem::exists(log_path)) std::filesystem::create_directories(log_path);
 	google::SetLogDestination(google::INFO, log_path.c_str());
+	google::SetStderrLogging(google::WARNING);
 	
 	//load configuration
 	configuration_file config;
@@ -312,6 +370,9 @@ int main(int argc, char **argv)
 	//model stream type
 	global_var::ml_model_stream_type = *config.get<std::string>("ml_model_stream_type");
 	global_var::ml_model_stream_compressed_filter_limit = *config.get<float>("ml_model_stream_compressed_filter_limit");
+	
+	//enable_profiler
+	global_var::enable_profiler = *config.get<bool>("enable_profiler");
 	
 	//global blockchain config
 	global_var::estimated_transaction_per_block = *config.get<int>("blockchain_estimated_block_size");

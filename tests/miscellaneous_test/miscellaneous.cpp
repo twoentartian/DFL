@@ -8,6 +8,7 @@
 #include <ml_layer.hpp>
 #include <configure_file.hpp>
 #include <duplicate_checker.hpp>
+#include <performance_profiler.hpp>
 
 #define BOOST_TEST_MAIN
 
@@ -81,6 +82,12 @@ BOOST_AUTO_TEST_SUITE (miscellaneous_test)
 		BOOST_CHECK(checker.find(1) == true);
 		std::this_thread::sleep_for(std::chrono::seconds(6));
 		BOOST_CHECK(checker.find(1) == false);
+	}
+	
+	BOOST_AUTO_TEST_CASE (perfrmance_profiler)
+	{
+		profiler_auto p1("p1");
+		std::this_thread::sleep_for(std::chrono::seconds(5));
 	}
 	
 BOOST_AUTO_TEST_SUITE_END()

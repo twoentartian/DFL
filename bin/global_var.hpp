@@ -13,4 +13,5 @@ namespace global_var
 	float ml_model_stream_compressed_filter_limit;
 	int estimated_transaction_per_block;
 	int peer_count;
+	bool enable_profiler;
 }
