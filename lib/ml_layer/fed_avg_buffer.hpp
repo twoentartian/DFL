@@ -47,6 +47,12 @@ namespace Ml
 			output.set_all(0);
 			counter.set_all(0);
 			
+			if (_current_size == 0)
+			{
+				//error because there is no data in the buffer
+				throw std::logic_error("no data is in the buffer");
+			}
+			
 			for (size_t model_index = 0; model_index < _current_size; ++model_index)
 			{
 				auto& model = _data[model_index];

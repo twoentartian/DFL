@@ -373,6 +373,9 @@ int main(int argc, char **argv)
 	
 	//enable_profiler
 	global_var::enable_profiler = *config.get<bool>("enable_profiler");
+	std::shared_ptr<profiler_auto> profiler_p;
+	if (global_var::enable_profiler)
+		profiler_p.reset(new profiler_auto("application_running"));
 	
 	//global blockchain config
 	global_var::estimated_transaction_per_block = *config.get<int>("blockchain_estimated_block_size");
