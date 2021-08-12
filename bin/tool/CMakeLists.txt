@@ -9,3 +9,6 @@ target_link_libraries(block_db_to_json "${OPENSSL_CRYPTO_LIBRARY}" caffe caffepr
 
 add_executable(dirichlet_distribution_config_generator dirichlet_distribution_config_generator.cpp)
 target_link_libraries(dirichlet_distribution_config_generator "${GLOG_LIBRARY}" "${Boost_LIBRARIES}")
+
+add_executable(network_ping_pong network_ping_pong.cpp)
+target_link_libraries(network_ping_pong "${GLOG_LIBRARY}" "${Boost_LIBRARIES}" pthread)
