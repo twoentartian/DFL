@@ -100,6 +100,8 @@ namespace network
 		
 		void receive_data(const uint8_t* data, size_t length)
 		{
+			std::lock_guard guard(_lock);
+			
 			if (length < packet_header::header_length)
 			{
 				//it can only be an ongoing packet or error
@@ -136,6 +138,8 @@ namespace network
 				//it might be a header, or an ongoing packet(crc == data by chance)
 				if (length <= _remain_length)
 				{
+					printf("new data packet arrived: %d\n", length);
+					
 					//an ongoing packet
 					add_data_to_buffer(data, length);
 					return;
@@ -148,6 +152,7 @@ namespace network
 			}
 			
 			//new packet header
+			printf("new packet header\n");
 			_buffer.reset(new std::string());
 			_current_command = header.command_type;
 			_remain_length = header.data_length;
@@ -178,6 +183,7 @@ namespace network
 		std::shared_ptr<std::string> _buffer;
 		size_t _remain_length;
 		uint16_t _current_command;
+		std::mutex _lock;
 		
 		void reset()
 		{
@@ -200,12 +206,14 @@ namespace network
 			}
 			if (_remain_length == 0)
 			{
+				printf("packet end\n");
 				if (_receive_callback) _receive_callback(_current_command, _buffer);
 				reset();
 				return;
 			}
 			else
 			{
+				printf("packet continue, remain length: %d\n", _remain_length);
 				_packet_ongoing = true;
 			}
 		}

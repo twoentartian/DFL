@@ -336,7 +336,14 @@ int main(int argc, char **argv)
 	//load configuration
 	configuration_file config;
 	config.SetDefaultConfiguration(get_default_configuration());
-	config.LoadConfiguration("./config.json");
+	auto ret_code = config.LoadConfiguration("./config.json");
+	if(ret_code < configuration_file::NoError)
+	{
+		if (ret_code == configuration_file::FileFormatError)
+			LOG(FATAL) << "configuration file format error";
+		else
+			LOG(FATAL) << "configuration file error code: " << ret_code;
+	}
 	
 	//load reputation dll
 	if constexpr(std::is_same_v<model_datatype, float>)
