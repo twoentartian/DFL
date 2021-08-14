@@ -126,9 +126,9 @@ namespace network::simple
 				while (remain_length > 0)
 				{
 					uint32_t current_length = remain_length > current_mtu ? current_mtu : remain_length;
-					boost::asio::write(*_socket, boost::asio::buffer(data + (length - remain_length), current_length));
+					//boost::asio::write(*_socket, boost::asio::buffer(data + (length - remain_length), current_length));
 					//_socket->send(boost::asio::buffer(data + (length - remain_length), current_length));
-					//_socket->write_some(boost::asio::buffer(data + (length - remain_length), current_length));
+					current_length = _socket->write_some(boost::asio::buffer(data + (length - remain_length), current_length));
 					remain_length -= current_length;
 				}
 			}
@@ -276,7 +276,7 @@ namespace network::simple
 			//set socket option
 			_socket->set_option(boost::asio::socket_base::receive_buffer_size(BUFFER_SIZE));
 			_socket->set_option(boost::asio::socket_base::send_buffer_size(BUFFER_SIZE));
-			_socket->set_option(boost::asio::ip::tcp::no_delay(true));
+			//_socket->set_option(boost::asio::ip::tcp::no_delay(true));
 			
 			do_read();
 		}
