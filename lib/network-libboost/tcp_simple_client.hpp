@@ -19,6 +19,7 @@ namespace network::simple
 		using ConnectHandlerType = std::function<void(tcp_status, std::shared_ptr<tcp_client>)>;
 		static constexpr int DEFAULT_WORKER_COUNT = 2;
 		static constexpr int BUFFER_SIZE = 1000 * 1000 * 10; // 10MB
+		static constexpr uint32_t DEFAULT_MTU = 1000;
 		
 		static std::shared_ptr<tcp_client> CreateClient()
 		{
@@ -118,9 +119,16 @@ namespace network::simple
 		
 		tcp_status write(const uint8_t *data, uint32_t length)
 		{
+			uint32_t current_mtu = _mtu;
+			uint32_t remain_length = length;
 			try
 			{
-				_socket->write_some(boost::asio::buffer(data, length));
+				while (remain_length > 0)
+				{
+					uint32_t current_length = remain_length > current_mtu ? current_mtu : remain_length;
+					_socket->write_some(boost::asio::buffer(data + (length - remain_length), current_length));
+					remain_length -= current_length;
+				}
 			}
 			catch (const std::exception &)
 			{
@@ -175,6 +183,7 @@ namespace network::simple
 		static std::shared_ptr<boost::asio::io_service> _io_service;
 		static size_t _worker;
 		static std::atomic<uint32_t> _instanceCounter;
+		uint32_t _mtu;
 		
 		std::shared_ptr<boost::asio::ip::tcp::socket> _socket;
 		std::vector<ReceiveHandlerType> _receiveHandlers;
@@ -187,7 +196,7 @@ namespace network::simple
 		uint16_t _port;
 		std::mutex _writer_locker;
 		
-		explicit tcp_client(bool lastTarget = false) : _connected(false), _connecting(false), _buffer(nullptr)
+		explicit tcp_client(bool lastTarget = false) : _connected(false), _connecting(false), _buffer(nullptr), _mtu(DEFAULT_MTU)
 		{
 			++_instanceCounter;
 			if (lastTarget)

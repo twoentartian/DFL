@@ -27,10 +27,18 @@ namespace network::simple
 		{
 			packet_header _header(command, length);
 			std::string header_str = _header.get_header_byte();
+			
+			_socket->write_some(boost::asio::buffer(header_str));
+			uint32_t current_mtu = _mtu;
+			uint32_t remain_length = length;
 			try
 			{
-				_socket->write_some(boost::asio::buffer(header_str));
-				_socket->write_some(boost::asio::buffer(data, length));
+				while (remain_length > 0)
+				{
+					uint32_t current_length = remain_length > current_mtu ? current_mtu : remain_length;
+					_socket->write_some(boost::asio::buffer(data + (length - remain_length), current_length));
+					remain_length -= current_length;
+				}
 			}
 			catch (const std::exception &)
 			{
