@@ -25,7 +25,7 @@ int main()
 	_p2p_1.start_service(service_port, 4);
 	
 	std::string data_payload = "test+payload";
-	data_payload.resize(10*1000*1000);
+	data_payload.resize(5*1000*1000);
 	
 	std::condition_variable cv;
 	std::mutex lock;
