@@ -14,7 +14,10 @@ namespace network
 	class p2p_with_header : i_p2p_node_with_header
 	{
 	public:
-		p2p_with_header(bool enable_log = false) : _enable_log(enable_log)
+		static constexpr int DEFAULT_WAIT_TIME = 10;
+		int no_response_wait_time;
+		
+		p2p_with_header(bool enable_log = false) : _enable_log(enable_log), no_response_wait_time(DEFAULT_WAIT_TIME)
 		{
 		
 		}
@@ -80,7 +83,7 @@ namespace network
 			//wait for reply
 			{
 				std::unique_lock<std::mutex> lk(m);
-				cv.wait_for(lk, std::chrono::seconds(5));
+				cv.wait_for(lk, std::chrono::seconds(no_response_wait_time));
 			}
 			
 			client->Disconnect();
