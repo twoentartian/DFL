@@ -19,11 +19,12 @@ namespace network::simple
 	{
 	public:
 		static constexpr int BUFFER_SIZE = 1000 * 1000 * 10; // 10MB
+		static constexpr uint32_t DEFAULT_MTU = 500;
 		
 		using CloseHandlerType = std::function<void(std::shared_ptr<tcp_session>)>;
 		using ReceiveHandlerType = std::function<void(char *, uint32_t, std::shared_ptr<tcp_session>)>;
 		
-		tcp_session(const std::shared_ptr<boost::asio::ip::tcp::socket> &socket_ptr) noexcept
+		tcp_session(const std::shared_ptr<boost::asio::ip::tcp::socket> &socket_ptr) noexcept : _mtu(DEFAULT_MTU)
 		{
 			_buffer = new char[BUFFER_SIZE];
 			_connected = true;
@@ -50,9 +51,16 @@ namespace network::simple
 		
 		tcp_status write(const uint8_t *data, uint32_t length)
 		{
+			uint32_t current_mtu = _mtu;
+			uint32_t remain_length = length;
 			try
 			{
-				_socket->write_some(boost::asio::buffer(data, length));
+				while (remain_length > 0)
+				{
+					uint32_t current_length = remain_length > current_mtu ? current_mtu : remain_length;
+					_socket->write_some(boost::asio::buffer(data + (length - remain_length), current_length));
+					remain_length -= current_length;
+				}
 			}
 			catch (const std::exception &)
 			{
@@ -122,6 +130,7 @@ namespace network::simple
 		std::shared_ptr<boost::asio::ip::tcp::socket> _socket;
 		bool _connected;
 		char *_buffer;
+		uint32_t _mtu;
 		
 		std::vector<CloseHandlerType> _closeHandlers;
 		std::vector<ReceiveHandlerType> _receiveHandlers;

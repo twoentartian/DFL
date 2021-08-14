@@ -27,8 +27,15 @@ namespace network::simple
 		{
 			packet_header _header(command, length);
 			std::string header_str = _header.get_header_byte();
+			try
+			{
+				_socket->write_some(boost::asio::buffer(header_str));
+			}
+			catch (const std::exception &)
+			{
+				return SocketCorrupted;
+			}
 			
-			_socket->write_some(boost::asio::buffer(header_str));
 			uint32_t current_mtu = _mtu;
 			uint32_t remain_length = length;
 			try
@@ -44,6 +51,7 @@ namespace network::simple
 			{
 				return SocketCorrupted;
 			}
+			
 			return Success;
 		}
 		
