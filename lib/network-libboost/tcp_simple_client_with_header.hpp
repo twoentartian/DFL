@@ -29,7 +29,8 @@ namespace network::simple
 			std::string header_str = _header.get_header_byte();
 			try
 			{
-				_socket->send(boost::asio::buffer(header_str));
+				boost::asio::write(_socket, boost::asio::buffer(header_str));
+				//_socket->send(boost::asio::buffer(header_str));
 				//_socket->write_some(boost::asio::buffer(header_str));
 			}
 			catch (const std::exception &)
@@ -44,7 +45,8 @@ namespace network::simple
 				while (remain_length > 0)
 				{
 					uint32_t current_length = remain_length > current_mtu ? current_mtu : remain_length;
-					_socket->send(boost::asio::buffer(data + (length - remain_length), current_length));
+					boost::asio::write(_socket, boost::asio::buffer(data + (length - remain_length), current_length));
+					//_socket->send(boost::asio::buffer(data + (length - remain_length), current_length));
 					//_socket->write_some(boost::asio::buffer(data + (length - remain_length), current_length));
 					remain_length -= current_length;
 				}
