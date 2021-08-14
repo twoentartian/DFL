@@ -13,8 +13,8 @@ int main()
 		if (command == 0)
 		{
 			std::string data_str(data,length);
-			std::cout << "receive data " << data_str << std::endl;
-			return {0,data_str};
+			std::cout << "receive data, size: " << data_str.size() << std::endl;
+			return {0,"receive data, size: " + std::to_string(data_str.size())};
 		}
 		if (command == 1)
 		{
