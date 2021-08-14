@@ -18,7 +18,7 @@ namespace network::simple
 	class tcp_session : public std::enable_shared_from_this<tcp_session>
 	{
 	public:
-		static constexpr int BUFFER_SIZE = 1000 * 1000 * 10; // 10MB
+		static constexpr int BUFFER_SIZE = 1000 * 1000 * 1; // 10MB
 		static constexpr uint32_t DEFAULT_MTU = 500;
 		
 		using CloseHandlerType = std::function<void(std::shared_ptr<tcp_session>)>;

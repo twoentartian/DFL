@@ -18,7 +18,7 @@ namespace network::simple
 		using ReceiveHandlerType = std::function<void(char*, uint32_t, std::shared_ptr<tcp_client>)>;
 		using ConnectHandlerType = std::function<void(tcp_status, std::shared_ptr<tcp_client>)>;
 		static constexpr int DEFAULT_WORKER_COUNT = 2;
-		static constexpr int BUFFER_SIZE = 1000 * 1000 * 10; // 10MB
+		static constexpr int BUFFER_SIZE = 1000 * 1000 * 1; // 10MB
 		static constexpr uint32_t DEFAULT_MTU = 500;
 		
 		static std::shared_ptr<tcp_client> CreateClient()
