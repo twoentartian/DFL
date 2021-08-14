@@ -138,7 +138,7 @@ namespace network
 				//it might be a header, or an ongoing packet(crc == data by chance)
 				if (length <= _remain_length)
 				{
-					printf("new data packet arrived: %d\n", length);
+					//printf("new data packet arrived: %d\n", length);
 					
 					//an ongoing packet
 					add_data_to_buffer(data, length);
@@ -152,7 +152,7 @@ namespace network
 			}
 			
 			//new packet header
-			printf("new packet header\n");
+			//printf("new packet header\n");
 			_buffer.reset(new std::string());
 			_current_command = header.command_type;
 			_remain_length = header.data_length;
@@ -206,14 +206,14 @@ namespace network
 			}
 			if (_remain_length == 0)
 			{
-				printf("packet end\n");
+				//printf("packet end\n");
 				if (_receive_callback) _receive_callback(_current_command, _buffer);
 				reset();
 				return;
 			}
 			else
 			{
-				printf("packet continue, remain length: %d\n", _remain_length);
+				//printf("packet continue, remain length: %d\n", _remain_length);
 				_packet_ongoing = true;
 			}
 		}
