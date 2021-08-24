@@ -211,19 +211,19 @@ public:
 		{
 			if (models[i].accuracy == min_accuracy)
 			{
-				reputation[models[i].generator_address] -= 0.01;
+				reputation[models[i].generator_address] -= 0.05;
 				if (reputation[models[i].generator_address] < 0) reputation[models[i].generator_address] = 0;
 			}
 			
 			if (models[i].type == Ml::model_compress_type::normal)
 			{
-				double temp_weight = (1 + models[i].accuracy - average_accuracy) * (1 + reputation_copy[models[i].generator_address] - average_reputation);
+				double temp_weight = (models[i].accuracy) * (reputation_copy[models[i].generator_address]);
 				total_weight = total_weight + temp_weight;
 				weights.push_back(temp_weight);
 			}
 			else if (models[i].type == Ml::model_compress_type::compressed_by_diff)
 			{
-				double temp_weight = (1 + models[i].accuracy - average_accuracy) * (1 + reputation_copy[models[i].generator_address] - average_reputation);
+				double temp_weight = (models[i].accuracy) * (reputation_copy[models[i].generator_address]);
 				total_weight = total_weight + temp_weight;
 				weights_filtered.push_back(temp_weight);
 			}
