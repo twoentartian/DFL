@@ -233,6 +233,21 @@ public:
 			}
 		}
 		
+		//all weights are zero
+		if (total_weight == 0.0)
+		{
+			for (auto&& single_weight : weights)
+			{
+				single_weight = 1.0;
+				total_weight += single_weight;
+			}
+			for (auto&& single_weight : weights_filtered)
+			{
+				single_weight = 1.0;
+				total_weight += single_weight;
+			}
+		}
+		
 		for (int i = 0; i < weights.size(); i++)
 		{
 			weights[i] = weights[i] / total_weight * double (weights.size());

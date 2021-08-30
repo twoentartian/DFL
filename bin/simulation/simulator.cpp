@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <fstream>
 #include <set>
+#include <atomic>
 
 #include <glog/logging.h>
 

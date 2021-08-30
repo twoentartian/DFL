@@ -211,7 +211,8 @@ namespace Ml
 			std::vector<int> test_score_output_id;
 			const boost::shared_ptr<caffe::Net<DType> >& test_net = this->test_nets_[test_net_id];
 			DType loss = 0;
-			for (int i = 0; i < this->param_.test_iter(test_net_id); ++i)
+			//for (int i = 0; i < this->param_.test_iter(test_net_id); ++i)
+			for (int i = 0; i < 1; ++i)
 			{
 				DType iter_loss;
 				const std::vector<caffe::Blob<DType>*>& result =	test_net->Forward(&iter_loss);
@@ -254,7 +255,8 @@ namespace Ml
 				const std::string& output_name = test_net->blob_names()[output_blob_index];
 				const DType loss_weight = test_net->blob_loss_weights()[output_blob_index];
 				std::ostringstream loss_msg_stream;
-				const DType mean_score = test_score[i] / this->param_.test_iter(test_net_id);
+				//const DType mean_score = test_score[i] / this->param_.test_iter(test_net_id);
+				const DType mean_score = test_score[i];
 				if (loss_weight)
 				{
 					loss_msg_stream << " (* " << loss_weight << " = " << loss_weight * mean_score << " loss)";
