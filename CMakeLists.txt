@@ -78,7 +78,7 @@ include_directories(${RocksDB_INCLUDE_DIR})
 find_package(LZ4 REQUIRED)
 include_directories(${LZ4_INCLUDE_DIR})
 
-list(APPEND Caffe_libs "${CAFFE_LIB}" "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}""${LZ4_LIBRARIES}")
+list(APPEND Caffe_libs "${CAFFE_LIB}" "${GLOG_LIBRARY}" "${Protobuf_LIBRARIES}" "${snappy_LIBRARIES}" "${LevelDB_LIBRARIES}" "${LMDB_LIBRARIES}" "${OpenCV_LIBS}" "${Boost_LIBRARIES}" "${LZ4_LIBRARIES}")
 
 # TensorFlow
 #set(TENSORFLOW_HOME 3rd/tensorflow)

@@ -13,6 +13,7 @@ configuration_file::json get_default_simulation_configuration()
 	output["ml_train_dataset_label"] = "../../../dataset/MNIST/train-labels.idx1-ubyte";
 	output["ml_test_dataset"] = "../../../dataset/MNIST/t10k-images.idx3-ubyte";
 	output["ml_test_dataset_label"] = "../../../dataset/MNIST/t10k-labels.idx1-ubyte";
+	output["ml_delayed_test_accuracy"] = false;
 	
 	output["ml_max_tick"] = 1200;
 	output["ml_train_batch_size"] = 64;
@@ -32,12 +33,14 @@ configuration_file::json get_default_simulation_configuration()
 	node["buffer_size"] = 2;
 	node["model_generation_type"] = "compressed"; //normal, compressed
 	node["filter_limit"] = 0.5;
+	node["node_type"] = "normal";
 	node["non_iid_distribution"] = node_non_iid;
 	
 	configuration_file::json nodes = configuration_file::json::array();
 	nodes.push_back(node);
 	node["name"] = "2";
 	node["dataset_mode"] = "iid";
+	node["node_type"] = "malicious_random_strategy";
 	nodes.push_back(node);
 	
 	output["nodes"] = nodes;
