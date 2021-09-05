@@ -516,16 +516,10 @@ int main(int argc, char *argv[])
 				single_node.second->next_train_tick += single_node.second->training_interval_tick[distribution(rng)];
 				
 				auto parameter_before = single_node.second->solver->get_parameter();
-				
-				// Ignore the observer node since it does not train or send model to other nodes.
-				if (single_node.second->type == node_type::observer)
-				{
-					continue;
-				}
-				
 				single_node.second->train_model(train_data, train_label, true);
-				single_node.second->generate_model_sent();
-				auto parameter_after = single_node.second->parameter_sent;
+				auto output_opt = single_node.second->generate_model_sent();
+				if (!output_opt) continue;// Ignore the observer node since it does not train or send model to other nodes.
+				auto parameter_after = *output_opt;
 				auto parameter_output = parameter_after;
 				
 				Ml::model_compress_type type;

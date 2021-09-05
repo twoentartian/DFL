@@ -5,6 +5,7 @@
 #ifndef DFL_NODE_HPP
 #define DFL_NODE_HPP
 
+#include <optional>
 #include "../../lib/ml_layer.hpp"
 
 enum class dataset_mode_type
@@ -77,14 +78,11 @@ public:
 	float filter_limit;
 	std::shared_ptr<std::ofstream> reputation_output;
 	
-	//std::string node_type;
-	Ml::caffe_parameter_net<model_datatype> parameter_sent;
-	
 	std::vector<node *> peers;
 	
 	virtual void train_model(const std::vector<Ml::tensor_blob_like<model_datatype>> &data, const std::vector<Ml::tensor_blob_like<model_datatype>> &label, bool display) = 0;
 	
-	virtual void generate_model_sent() = 0;
+	virtual std::optional<Ml::caffe_parameter_net<model_datatype>> generate_model_sent() = 0;
 	
 };
 
@@ -103,9 +101,9 @@ public:
 		this->solver->train(data, label, display);
 	}
 	
-	void generate_model_sent() override
+	std::optional<Ml::caffe_parameter_net<model_datatype>> generate_model_sent() override
 	{
-		this->parameter_sent = this->solver->get_parameter();
+		return {this->solver->get_parameter()};
 	}
 };
 
@@ -123,10 +121,11 @@ public:
 		this->solver->train(data, label, display);
 	}
 	
-	void generate_model_sent() override
+	std::optional<Ml::caffe_parameter_net<model_datatype>> generate_model_sent() override
 	{
-		this->parameter_sent = this->solver->get_parameter();
-		this->parameter_sent.random(0, 0.0001);
+		Ml::caffe_parameter_net<model_datatype> output = this->solver->get_parameter();
+		output.random(0, 0.0001);
+		return {output};
 	}
 };
 
@@ -153,18 +152,20 @@ public:
 		this->solver->train(data, label, display);
 	}
 	
-	void generate_model_sent() override
+	std::optional<Ml::caffe_parameter_net<model_datatype>> generate_model_sent() override
 	{
+		Ml::caffe_parameter_net<model_datatype> output;
 		if (turn == 0)
 		{
-			this->parameter_sent = this->solver->get_parameter();
+			output = this->solver->get_parameter();
 		}
 		else
 		{
-			this->parameter_sent = this->solver->get_parameter();
-			this->parameter_sent.random(-0.1, 0.1);
+			output = this->solver->get_parameter();
+			output.random(-0.1, 0.1);
 		}
 		turn = (turn + 1) % 2;
+		return {output};
 	}
 	
 };
@@ -193,18 +194,20 @@ public:
 		}
 	}
 	
-	void generate_model_sent() override
+	std::optional<Ml::caffe_parameter_net<model_datatype>> generate_model_sent() override
 	{
+		Ml::caffe_parameter_net<model_datatype> output;
 		if (turn == 0)
 		{
-			this->parameter_sent = this->solver->get_parameter();
+			output = this->solver->get_parameter();
 		}
 		else
 		{
-			this->parameter_sent = this->solver->get_parameter();
-			this->parameter_sent.random(-0.5, 0.5);
+			output = this->solver->get_parameter();
+			output.random(-0.5, 0.5);
 		}
 		turn = (turn + 1) % 2;
+		return {output};
 	}
 	
 };
@@ -223,9 +226,9 @@ public:
 	
 	}
 	
-	void generate_model_sent() override
+	std::optional<Ml::caffe_parameter_net<model_datatype>> generate_model_sent() override
 	{
-	
+		return {};
 	}
 	
 };
