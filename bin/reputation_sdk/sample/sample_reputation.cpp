@@ -211,7 +211,7 @@ public:
 		{
 			if (models[i].accuracy == min_accuracy)
 			{
-				reputation[models[i].generator_address] -= 0.05;
+				reputation[models[i].generator_address] -= 0.01;
 				if (reputation[models[i].generator_address] < 0) reputation[models[i].generator_address] = 0;
 			}
 			
@@ -250,11 +250,26 @@ public:
 		
 		for (int i = 0; i < weights.size(); i++)
 		{
-			weights[i] = weights[i] / total_weight * double (weights.size());
+			if (total_weight == 0.0)
+			{
+				weights[i] = 1;
+			}
+			else
+			{
+				weights[i] = weights[i] / total_weight * double (weights.size());
+			}
 		}
 		for (int i = 0; i < weights_filtered.size(); i++)
 		{
-			weights_filtered[i] = weights_filtered[i] / total_weight * double (weights_filtered.size());
+			if (total_weight == 0.0)
+			{
+				weights_filtered[i] = 1;
+			}
+			else
+			{
+				weights_filtered[i] = weights_filtered[i] / total_weight * double (weights_filtered.size());
+			}
+			
 		}
 		
 		for (int i = 0; i < weights.size(); i++)
