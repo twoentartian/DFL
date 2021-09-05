@@ -525,8 +525,8 @@ int main(int argc, char *argv[])
 				
 				single_node.second->train_model(train_data, train_label, true);
 				single_node.second->generate_model_sent();
-				auto parameter_after = single_node.second->solver->get_parameter();
-				auto parameter_output = single_node.second->parameter_sent;
+				auto parameter_after = single_node.second->parameter_sent;
+				auto parameter_output = parameter_after;
 				
 				Ml::model_compress_type type;
 				if (single_node.second->model_generation_type == Ml::model_compress_type::compressed_by_diff)
