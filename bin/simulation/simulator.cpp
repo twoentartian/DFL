@@ -98,6 +98,8 @@ dll_loader<reputation_interface<model_datatype>> reputation_dll;
 
 int main(int argc, char *argv[])
 {
+	constexpr char config_file_path[] = "./simulator_config.json";
+	
 	//create new folder
 	std::string time_str = time_util::time_to_text(time_util::get_current_utc_time());
 	std::filesystem::path output_path = std::filesystem::current_path() / time_str;
@@ -112,7 +114,7 @@ int main(int argc, char *argv[])
 	//load configuration
 	configuration_file config;
 	config.SetDefaultConfiguration(get_default_simulation_configuration());
-	auto load_config_rc = config.LoadConfiguration("./simulator_with_malicious_node_config.json");
+	auto load_config_rc = config.LoadConfiguration(config_file_path);
 	if (load_config_rc < 0)
 	{
 		LOG(FATAL) << "cannot load configuration file, wrong format?";
@@ -120,7 +122,7 @@ int main(int argc, char *argv[])
 	}
 	auto config_json = config.get_json();
 	//backup configuration file
-	std::filesystem::copy("./simulator_with_malicious_node_config.json", output_path / "simulator_with_malicious_node_config.json");
+	std::filesystem::copy(config_file_path, output_path / config_file_path);
 	
 	//update global var
 	auto ml_solver_proto = *config.get<std::string>("ml_solver_proto");
