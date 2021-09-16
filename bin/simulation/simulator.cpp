@@ -520,7 +520,11 @@ int main(int argc, char *argv[])
 				auto parameter_before = single_node.second->solver->get_parameter();
 				single_node.second->train_model(train_data, train_label, true);
 				auto output_opt = single_node.second->generate_model_sent();
-				if (!output_opt) continue;// Ignore the observer node since it does not train or send model to other nodes.
+				if (!output_opt)
+				{
+					LOG(INFO) << "ignore output for node " << single_node.second->name << " at tick " << tick;
+					continue;// Ignore the observer node since it does not train or send model to other nodes.
+				}
 				auto parameter_after = *output_opt;
 				auto parameter_output = parameter_after;
 				
@@ -749,7 +753,7 @@ int main(int argc, char *argv[])
 					auto iter_find = single_node.second->nets_accuracy_only_record.find(current_tick);
 					if (iter_find != single_node.second->nets_accuracy_only_record.end())
 					{
-						auto  accuracy = iter_find->second;
+						auto accuracy = iter_find->second;
 						accuracy_file << "," << accuracy;
 					}
 					else
