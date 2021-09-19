@@ -29,7 +29,7 @@ configuration_file::json get_default_simulation_configuration()
 	node_non_iid["3"] = configuration_file::json::array({2.0,3.0});
 	node["name"] = "1";
 	node["dataset_mode"] = "default"; //default - randomly choose from dataset, iid - randomly choose from iid labels, non-iid - choose higher frequency labels for specific label
-	node["training_interval_tick"] = configuration_file::json::array({8,9,10});
+	node["training_interval_tick"] = configuration_file::json::array({8,9,10,11,12});
 	node["buffer_size"] = 2;
 	node["model_generation_type"] = "compressed"; //normal, compressed
 	node["filter_limit"] = 0.5;

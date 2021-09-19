@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 	}
 	auto config_json = config.get_json();
 	//backup configuration file
-	std::filesystem::copy(config_file_path, output_path / config_file_path);
+	std::filesystem::copy(config_file_path, std::string (config_file_path) + ".bak");
 	
 	//update global var
 	auto ml_solver_proto = *config.get<std::string>("ml_solver_proto");
@@ -672,8 +672,10 @@ int main(int argc, char *argv[])
 			accuracy = solver_for_final_testing[thread_index].evaluation(test_data, test_label);
 			
 			progress_counter++;
+			std::mutex cout_lock;
 			if (int(float(progress_counter) / float(total) * 100.0) > current_progress)
 			{
+				std::lock_guard guard(cout_lock);
 				std::cout << "testing - " << current_progress << "%" << std::endl;
 				std::cout.flush();
 				current_progress += step;

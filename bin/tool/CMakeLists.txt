@@ -15,3 +15,6 @@ target_link_libraries(network_receiver "${GLOG_LIBRARY}" "${Boost_LIBRARIES}" pt
 
 add_executable(network_sender network_test_sender.cpp)
 target_link_libraries(network_sender "${GLOG_LIBRARY}" "${Boost_LIBRARIES}" pthread)
+
+add_executable(large_scale_simulation_generator large_scale_simulation_generator.cpp)
+target_link_libraries(large_scale_simulation_generator "${GLOG_LIBRARY}" "${Boost_LIBRARIES}" pthread)
