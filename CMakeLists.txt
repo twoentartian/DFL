@@ -74,7 +74,7 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 find_package(RocksDB REQUIRED)
 include_directories(${RocksDB_INCLUDE_DIR})
 
-#LZ4
+# LZ4
 find_package(LZ4 REQUIRED)
 include_directories(${LZ4_INCLUDE_DIR})
 

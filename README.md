@@ -3,6 +3,23 @@
 ## What is DFL?
 DFL is a blockchain framework integrating specially optimized for, and works for federated machine learning. In DFL, all contributions are reflected on the improvements of model accuracy and blockchain database works as a proof of contribution rather than a distributed ledger.
 
+## Toolchain
+Here are two tested toolchain configuration cases.
+### General x86-64
+- Ubuntu 20
+- GCC 9.3.0
+- CMake 3.16
+- Boost 1.76
+- CUDA 10.2 (optional)
+
+### ARM: Nvidia Jetson Nano 2Gb
+- Ubuntu 18 (Official Jetson image)
+- GCC 9.4.0
+- CMake 3.16
+- Boost 1.76
+- CUDA 10.2 (under testing)
+- CuDNN 8 (under testing)
+
 ## Dependency
 
 - Caffe, DFL uses Caffe as the machine learning backend, CUDA support is still under testing.
