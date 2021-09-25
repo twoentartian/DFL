@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include <boost/config.hpp>
 #include <boost/shared_ptr.hpp>
@@ -20,7 +21,7 @@ public:
 	
 	std::tuple<bool, std::string> load(const std::string& dllPath, const std::string& class_name)
 	{
-		if (!boost::filesystem::exists(dllPath))
+		if (!std::filesystem::exists(dllPath))
 		{
 			return {false, "dll file not exist"};
 		}

@@ -348,11 +348,13 @@ int main(int argc, char **argv)
 	//load reputation dll
 	if constexpr(std::is_same_v<model_datatype, float>)
 	{
-		reputation_dll.load(*config.get<std::string>("reputation_dll_path"), export_class_name_reputation_float);
+		auto [status,msg] = reputation_dll.load(*config.get<std::string>("reputation_dll_path"), export_class_name_reputation_float);
+		LOG_IF(FATAL, !status) << "cannot load reputation dll: " << msg;
 	}
 	else if constexpr(std::is_same_v<model_datatype, double>)
 	{
-		reputation_dll.load(*config.get<std::string>("reputation_dll_path"), export_class_name_reputation_double);
+		auto [status,msg] = reputation_dll.load(*config.get<std::string>("reputation_dll_path"), export_class_name_reputation_double);
+		LOG_IF(FATAL, !status) << "cannot load reputation dll: " << msg;
 	}
 	else
 	{

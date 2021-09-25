@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# create caffe snap folder
+mkdir "../dataset/MNIST/result"
+
 cd ..
 mkdir "3rd"
 sudo chmod 777 ./3rd

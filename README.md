@@ -12,7 +12,7 @@ Here are two tested toolchain configuration cases.
 - Boost 1.76
 - CUDA 10.2 (optional)
 
-### ARM: Nvidia Jetson Nano 2Gb
+### Arm Aarch64: Nvidia Jetson Nano 2Gb
 - Ubuntu 18 (Official Jetson image)
 - GCC 9.4.0
 - CMake 3.16
