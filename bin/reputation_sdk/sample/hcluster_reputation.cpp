@@ -19,6 +19,21 @@ public:
 		Ml::fed_avg_buffer<Ml::caffe_parameter_net<DType>> parameter_buffers(models.size());
 		Ml::fed_avg_buffer<Ml::caffe_parameter_net<DType>> parameter_buffers_filtered(models.size());
 		
+		//reputation
+		double min_accuracy = 1.0;
+		for (int i = 0; i < models.size(); ++i)
+		{
+			if (models[i].accuracy < min_accuracy) min_accuracy = models[i].accuracy;
+		}
+		for (int i = 0; i < models.size(); ++i)
+		{
+			if (models[i].accuracy == min_accuracy)
+			{
+				reputation[models[i].generator_address] -= 0.01;
+				if (reputation[models[i].generator_address] < 0) reputation[models[i].generator_address] = 0;
+			}
+		}
+		
 		//hierarchical clustering
 		std::vector<size_t> pass_index;
 		{
@@ -67,13 +82,11 @@ public:
 		
 		//calculate average
 		double average_accuracy = 0.0;
-		double min_accuracy = 1.0;
 		double average_reputation = 0.0;
 		for (int i = 0; i < passed_model.size(); ++i)
 		{
 			average_accuracy += passed_model[i].accuracy;
 			average_reputation += reputation[passed_model[i].generator_address];
-			if (passed_model[i].accuracy < min_accuracy) min_accuracy = passed_model[i].accuracy;
 		}
 		average_accuracy /= passed_model.size();
 		average_reputation /= passed_model.size();
@@ -86,12 +99,6 @@ public:
 		
 		for (int i = 0; i < passed_model.size(); ++i)
 		{
-			if (passed_model[i].accuracy == min_accuracy)
-			{
-				reputation[passed_model[i].generator_address] -= 0.01;
-				if (reputation[passed_model[i].generator_address] < 0) reputation[passed_model[i].generator_address] = 0;
-			}
-			
 			if (passed_model[i].type == Ml::model_compress_type::normal)
 			{
 				double temp_weight = (passed_model[i].accuracy) * (reputation_copy[passed_model[i].generator_address]);

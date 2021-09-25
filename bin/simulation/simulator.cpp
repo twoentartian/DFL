@@ -96,9 +96,21 @@ get_dataset_by_node_type(Ml::data_converter<model_datatype> &dataset, const node
 std::unordered_map<std::string, node<model_datatype> *> node_container;
 dll_loader<reputation_interface<model_datatype>> reputation_dll;
 
+
 int main(int argc, char *argv[])
 {
 	constexpr char config_file_path[] = "./simulator_config.json";
+	
+	//register node types
+	normal_node<model_datatype>::registerNodeType();
+	observer_node<model_datatype>::registerNodeType();
+	malicious_model_poisoning_random_model_node<model_datatype>::registerNodeType();
+	malicious_model_poisoning_random_model_by_turn_node<model_datatype>::registerNodeType();
+	malicious_model_poisoning_random_model_biased_0_1_node<model_datatype>::registerNodeType();
+	malicious_duplication_attack_node<model_datatype>::registerNodeType();
+	malicious_data_poisoning_shuffle_label_node<model_datatype>::registerNodeType();
+	malicious_data_poisoning_shuffle_label_biased_1_node<model_datatype>::registerNodeType();
+	malicious_data_poisoning_random_data_node<model_datatype>::registerNodeType();
 	
 	//create new folder
 	std::string time_str = time_util::time_to_text(time_util::get_current_utc_time());
@@ -122,7 +134,7 @@ int main(int argc, char *argv[])
 	}
 	auto config_json = config.get_json();
 	//backup configuration file
-	std::filesystem::copy(config_file_path, std::string (config_file_path) + ".bak");
+	std::filesystem::copy(config_file_path, output_path / "simulator_config.json");
 	
 	//update global var
 	auto ml_solver_proto = *config.get<std::string>("ml_solver_proto");
@@ -195,30 +207,14 @@ int main(int argc, char *argv[])
 		
 		node<model_datatype> *temp_node = nullptr;
 		
-		if (node_type == "normal")
+		//find the node in the registered node map
 		{
-			//            temp_node=std::make_shared<normal_node>(node_name,max_buffer_size,node_type);
-			temp_node = new normal_node<model_datatype>(node_name, max_buffer_size);
-		}
-		else if (node_type == "malicious_random_strategy")
-		{
-			//            temp_node=std::make_shared<malicious_node>(node_name,max_buffer_size,node_type);
-			temp_node = new malicious_node_random_generate<model_datatype>(node_name, max_buffer_size);
-		}
-		else if (node_type == "malicious_strategy_1")
-		{
-			//            temp_node=std::make_shared<malicious_node>(node_name,max_buffer_size,node_type);
-			temp_node = new malicious_node_strategy_1<model_datatype>(node_name, max_buffer_size);
-		}
-		else if (node_type == "malicious_strategy_2")
-		{
-			//            temp_node=std::make_shared<malicious_node>(node_name,max_buffer_size,node_type);
-			temp_node = new malicious_node_strategy_2<model_datatype>(node_name, max_buffer_size);
-		}
-		else if (node_type == "observer_node")
-		{
-			//            temp_node=std::make_shared<malicious_node>(node_name,max_buffer_size,node_type);
-			temp_node = new observer_node<model_datatype>(node_name, max_buffer_size);
+			auto result = node<model_datatype>::get_node_by_type(node_type);
+			if (result == nullptr)
+			{
+				LOG(FATAL) << "unknown node type:" << node_type;
+			}
+			temp_node = result->new_node(node_name, max_buffer_size);
 		}
 		
 		auto[iter, status]=node_container.emplace(node_name, temp_node);

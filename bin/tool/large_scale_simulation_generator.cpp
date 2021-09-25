@@ -56,6 +56,18 @@ int main(int argc, char* argv[])
 	std::cout << "filter_limit: " << filter_limit << std::endl;
 	std::cout << "node_peer_connection_count: " << node_peer_connection_count << std::endl;
 	
+	if (node_peer_connection_count % 2 != 0 && node_peer_connection_type == "--")
+	{
+		std::cout << "warning: node_peer_connection_count must be an even number with " << node_peer_connection_type << " connection."<< std::endl;
+		return -1;
+	}
+	
+	if (node_peer_connection_type != "--" && node_peer_connection_type != "->")
+	{
+		std::cout << "unknown node_peer_connection_type: " << node_peer_connection_type << std::endl;
+		return -1;
+	}
+	
 	{
 		////set nodes
 		configuration_file config;
@@ -144,10 +156,21 @@ int main(int argc, char* argv[])
 		node_topology_json.clear();
 		for (int i = 0; i < node_count; ++i)
 		{
-			for (int j = 0; j < node_peer_connection_count; ++j)
+			if (node_peer_connection_type == "--")
 			{
-				node_topology_json.push_back(std::to_string(i) + node_peer_connection_type + std::to_string(node_connections[i][j]));
+				for (int j = 0; j < node_peer_connection_count/2; ++j)
+				{
+					node_topology_json.push_back(std::to_string(i) + node_peer_connection_type + std::to_string(node_connections[i][j]));
+				}
 			}
+			else
+			{
+				for (int j = 0; j < node_peer_connection_count; ++j)
+				{
+					node_topology_json.push_back(std::to_string(i) + node_peer_connection_type + std::to_string(node_connections[i][j]));
+				}
+			}
+
 		}
 		
 		config_json["ml_delayed_test_accuracy"] = false;

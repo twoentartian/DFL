@@ -45,11 +45,13 @@ int main(int argc, char* argv[])
 	std::random_device rd;
 	std::gamma_distribution<float> gamma(a,10000/a);
 	configuration_file::json& nodes_json = config.get_json()["nodes"];
+
 	
 	CHECK(nodes_json.is_array());
 	
 	for (auto& node : nodes_json)
 	{
+		node["dataset_mode"] = "non-iid";
 		auto& dis_json = node["non_iid_distribution"];
 		for (auto single_label : all_labels)
 		{
