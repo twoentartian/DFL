@@ -661,7 +661,7 @@ int main(int argc, char *argv[])
 		std::atomic_int current_progress = 0;
 		constexpr int step = 5;
 		auto_multi_thread::ParallelExecution_with_thread_index(worker, [&current_progress, &total, &progress_counter, &solver_for_final_testing, &test_dataset, &ml_test_batch_size](uint32_t index, uint32_t thread_index,
-		                                                                                                                                                                             std::tuple<Ml::caffe_parameter_net<model_datatype>, float> &modeL_accuracy)
+		                                                                                                                    std::tuple<Ml::caffe_parameter_net<model_datatype>, float> &modeL_accuracy)
 		{
 			auto&[model, accuracy] = modeL_accuracy;
 			auto[test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);

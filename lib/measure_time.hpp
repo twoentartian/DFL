@@ -44,7 +44,6 @@ public:
 	}
 };
 
-#define MEASURE_TIME_LOCAL(func) {measure_time timer;timer.start();func;timer.stop();std::cout << "Line: " << __LINE__ << " costs: " << timer.measure_ms() << " s." << std::endl;};
 #define PP_CONCAT(A, B) PP_CONCAT_IMPL(A, B)
 #define PP_CONCAT_IMPL(A, B) A##B
-#define MEASURE_TIME(func) measure_time PP_CONCAT(timer,__LINE__);PP_CONCAT(timer,__LINE__).start();func;PP_CONCAT(timer,__LINE__).stop();std::cout << "Line: " << __LINE__ << " costs: " << PP_CONCAT(timer,__LINE__).measure_ms() << " s." << std::endl;
+#define MEASURE_TIME(func) measure_time PP_CONCAT(timer,__LINE__);PP_CONCAT(timer,__LINE__).start();func;PP_CONCAT(timer,__LINE__).stop();std::cout << "Line: " << __LINE__ << " costs: " << PP_CONCAT(timer,__LINE__).measure_ms() << " ms." << std::endl;
