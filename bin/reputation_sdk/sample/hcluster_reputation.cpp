@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <reputation_sdk.hpp>
 #include <clustering/hierarchical_clustering.hpp>
 
@@ -36,6 +37,7 @@ public:
 		
 		//hierarchical clustering
 		std::vector<size_t> pass_index;
+		std::vector<size_t> non_pass_index;
 		{
 			std::vector<clustering::data_point_2d<float>> points;
 			points.reserve(models.size());
@@ -57,6 +59,15 @@ public:
 				}
 			}
 		}
+		
+		for (int i = 0; i < models.size(); ++i)
+		{
+			if (std::find(pass_index.begin(), pass_index.end(), i) == pass_index.end())
+			{
+				non_pass_index.push_back(i);
+			}
+		}
+
 		if (pass_index.empty()) LOG(FATAL) << "[Reputation DLL]: impossible situation, consider logic bug.";
 		
 		std::vector<updated_model<DType>> passed_model;
@@ -77,7 +88,17 @@ public:
 		LOG(INFO) << "[Reputation DLL]: centroid_accuracy:" << centroid_accuracy << ", centroid_reputation:" << centroid_reputation;
 		for (auto& model : passed_model)
 		{
-			LOG(INFO) << "[Reputation DLL]: chosen model accuracy: " << model.accuracy << "(" << model.generator_address << "-" << reputation[model.generator_address] << ")";
+			LOG(INFO) << "[Reputation DLL]: HCluster chosen model = accuracy: " << model.accuracy << "(" << model.generator_address << "-" << reputation[model.generator_address] << ")";
+		}
+		
+		//add models with higher accuracy to the passed_model
+		for (auto single_non_passed_index : non_pass_index)
+		{
+			if (models[single_non_passed_index].accuracy > centroid_accuracy)
+			{
+				LOG(INFO) << "[Reputation DLL]: better accuracy model = accuracy: " << models[single_non_passed_index].accuracy << "(" << models[single_non_passed_index].generator_address << "-" << reputation[models[single_non_passed_index].generator_address] << ")";
+				passed_model.push_back(models[single_non_passed_index]);
+			}
 		}
 		
 		//calculate average

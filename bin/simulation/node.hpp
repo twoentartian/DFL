@@ -70,6 +70,7 @@ public:
 	
 	size_t buffer_size;
 	std::vector<std::tuple<std::string, Ml::model_compress_type, Ml::caffe_parameter_net<model_datatype>>> parameter_buffer;
+	std::mutex parameter_buffer_lock;
 	std::shared_ptr<Ml::MlCaffeModel<model_datatype, caffe::SGDSolver>> solver;
 	std::unordered_map<std::string, double> reputation_map;
 	Ml::model_compress_type model_generation_type;
@@ -218,7 +219,7 @@ public:
 	std::optional<Ml::caffe_parameter_net<model_datatype>> generate_model_sent() override
 	{
 		Ml::caffe_parameter_net<model_datatype> output = this->solver->get_parameter();
-		output.random(0, 0.001);
+		output.random(0, 0.0001);
 		return {output};
 	}
 };

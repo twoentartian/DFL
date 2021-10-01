@@ -18,3 +18,6 @@ target_link_libraries(network_sender "${GLOG_LIBRARY}" "${Boost_LIBRARIES}" pthr
 
 add_executable(large_scale_simulation_generator large_scale_simulation_generator.cpp)
 target_link_libraries(large_scale_simulation_generator "${GLOG_LIBRARY}" "${Boost_LIBRARIES}" pthread)
+
+add_executable(remove_caffe_log remove_caffe_log.cpp)
+target_link_libraries(remove_caffe_log "${GLOG_LIBRARY}" "${Boost_LIBRARIES}" pthread)

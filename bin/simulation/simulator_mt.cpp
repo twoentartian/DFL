@@ -10,6 +10,7 @@
 
 #include <glog/logging.h>
 
+#include <tmt.hpp>
 #include <configure_file.hpp>
 #include <crypto.hpp>
 #include <auto_multi_thread.hpp>
@@ -215,7 +216,7 @@ int main(int argc, char *argv[])
 			{
 				LOG(FATAL) << "unknown node type:" << node_type;
 			}
-			temp_node = result->new_node(node_name, max_buffer_size);
+			temp_node = result->new_node(node_name, buf_size);
 		}
 		
 		auto[iter, status]=node_container.emplace(node_name, temp_node);
@@ -470,8 +471,9 @@ int main(int argc, char *argv[])
 	}
 	
 	//solver for testing
-	auto *solver_for_testing = new Ml::MlCaffeModel<float, caffe::SGDSolver>[max_buffer_size];
-	for (int i = 0; i < max_buffer_size; ++i)
+	size_t solver_for_testing_size = std::thread::hardware_concurrency();
+	auto *solver_for_testing = new Ml::MlCaffeModel<float, caffe::SGDSolver>[solver_for_testing_size];
+	for (int i = 0; i < solver_for_testing_size; ++i)
 	{
 		solver_for_testing[i].load_caffe_model(ml_solver_proto);
 	}
@@ -483,6 +485,7 @@ int main(int argc, char *argv[])
 	test_dataset.load_dataset_mnist(ml_test_dataset, ml_test_dataset_label);
 	
 	std::ofstream drop_rate(output_path / "drop_rate.txt", std::ios::binary);
+	std::mutex drop_rate_lock;
 	
 	//print reputation first line
 	for (auto &single_node : node_container)
@@ -496,140 +499,158 @@ int main(int argc, char *argv[])
 	}
 	
 	////////////  BEGIN SIMULATION  ////////////
-	int tick = 0;
-	while (tick <= ml_max_tick)
 	{
-		std::cout << "tick: " << tick << " (" << ml_max_tick << ")" << std::endl;
-		bool exit = false;
-		for (auto single_node : node_container)
+		std::vector<node<model_datatype>*> node_vector_container;
+		node_vector_container.reserve(node_container.size());
+		for (auto &single_node : node_container)
 		{
-			//train
-			if (tick >= single_node.second->next_train_tick)
-			{
-				std::vector<Ml::tensor_blob_like<model_datatype>> train_data, train_label;
-				std::tie(train_data, train_label) = get_dataset_by_node_type(train_dataset, *(single_node.second), ml_train_batch_size, ml_dataset_all_possible_labels);
-				
-				std::random_device dev;
-				std::mt19937 rng(dev());
-				std::uniform_int_distribution<int> distribution(0, int(single_node.second->training_interval_tick.size()) - 1);
-				single_node.second->next_train_tick += single_node.second->training_interval_tick[distribution(rng)];
-				
-				auto parameter_before = single_node.second->solver->get_parameter();
-				single_node.second->train_model(train_data, train_label, true);
-				auto output_opt = single_node.second->generate_model_sent();
-				if (!output_opt)
-				{
-					LOG(INFO) << "ignore output for node " << single_node.second->name << " at tick " << tick;
-					continue;// Ignore the observer node since it does not train or send model to other nodes.
-				}
-				auto parameter_after = *output_opt;
-				auto parameter_output = parameter_after;
-				
-				Ml::model_compress_type type;
-				if (single_node.second->model_generation_type == Ml::model_compress_type::compressed_by_diff)
-				{
-					//drop models
-					size_t total_weight = 0, dropped_count = 0;
-					auto compressed_model = Ml::model_compress::compress_by_diff_get_model(parameter_before, parameter_after, single_node.second->filter_limit, &total_weight, &dropped_count);
-					std::string compress_model_str = Ml::model_compress::compress_by_diff_lz_compress(compressed_model);
-					drop_rate << "node:" << single_node.second->name << "    tick:" << tick << "    drop:" << ((float) dropped_count) / total_weight << "(" << dropped_count << "/" << total_weight << ")"
-					          << "    compressed_size:" << compress_model_str.size() << std::endl;
-					
-					parameter_output = compressed_model;
-					type = Ml::model_compress_type::compressed_by_diff;
-				}
-				else
-				{
-					type = Ml::model_compress_type::normal;
-				}
-				
-				//add to buffer, and update model if necessary
-				for (auto updating_node : single_node.second->peers)
-				{
-					updating_node->parameter_buffer.emplace_back(single_node.second->name, type, parameter_output);
-					if (updating_node->parameter_buffer.size() == updating_node->buffer_size)
-					{
-						//update model
-						auto parameter = updating_node->solver->get_parameter();
-						std::vector<updated_model<model_datatype>> received_models;
-						received_models.resize(updating_node->parameter_buffer.size());
-						for (int i = 0; i < received_models.size(); ++i)
-						{
-							auto[node_name, type, model] = updating_node->parameter_buffer[i];
-							received_models[i].model_parameter = model;
-							received_models[i].type = type;
-							received_models[i].generator_address = node_name;
-							received_models[i].accuracy = 0;
-						}
-						
-						float self_accuracy = 0;
-						std::thread self_accuracy_thread([&updating_node, &test_dataset, &ml_test_batch_size, &self_accuracy, &ml_dataset_all_possible_labels]()
-						                                 {
-							                                 //auto [test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
-							                                 auto[test_data, test_label] = get_dataset_by_node_type(test_dataset, *updating_node, ml_test_batch_size, ml_dataset_all_possible_labels);
-							                                 self_accuracy = updating_node->solver->evaluation(test_data, test_label);
-						                                 });
-						size_t worker = received_models.size() > std::thread::hardware_concurrency() ? std::thread::hardware_concurrency() : received_models.size();
-						auto_multi_thread::ParallelExecution(worker, [parameter, &updating_node, &solver_for_testing, &test_dataset, &ml_test_batch_size, &ml_dataset_all_possible_labels](uint32_t index, updated_model<model_datatype> &model)
-						{
-							auto output_model = parameter;
-							if (model.type == Ml::model_compress_type::compressed_by_diff)
-							{
-								output_model.patch_weight(model.model_parameter);
-							}
-							else if (model.type == Ml::model_compress_type::normal)
-							{
-								output_model = model.model_parameter;
-							}
-							else
-							{
-								LOG(FATAL) << "unknown model type";
-							}
-							solver_for_testing[index].set_parameter(output_model);
-							auto[test_data, test_label] = get_dataset_by_node_type(test_dataset, *updating_node, ml_test_batch_size, ml_dataset_all_possible_labels);
-							model.accuracy = solver_for_testing[index].evaluation(test_data, test_label);
-						}, received_models.size(), received_models.data());
-						self_accuracy_thread.join();
-						std::cout << (boost::format("tick: %1%, node: %2%, accuracy: %3%") % tick % updating_node->name % self_accuracy).str() << std::endl;
-						auto &reputation_map = updating_node->reputation_map;
-						reputation_dll.get()->update_model(parameter, self_accuracy, received_models, reputation_map);
-						updating_node->solver->set_parameter(parameter);
-						
-						//print reputation map
-						*updating_node->reputation_output << tick;
-						for (const auto &reputation_pair : reputation_map)
-						{
-							*updating_node->reputation_output << "," << reputation_pair.second;
-						}
-						*updating_node->reputation_output << std::endl;
-						
-						//clear buffer and start new loop
-						updating_node->parameter_buffer.clear();
-					}
-				}
-			}
-			
-			//mark testing
-			if (tick % ml_test_interval_tick == 0)
-			{
-				if (ml_delayed_test_accuracy)
-				{
-					single_node.second->nets_record.emplace(tick, std::make_tuple(single_node.second->solver->get_parameter(), 0.0));
-				}
-				else
-				{
-					auto[test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
-					auto model = single_node.second->solver->get_parameter();
-					solver_non_delayed_testing->set_parameter(model);
-					auto accuracy = solver_non_delayed_testing->evaluation(test_data, test_label);
-					single_node.second->nets_accuracy_only_record.emplace(tick, accuracy);
-				}
-			}
+			node_vector_container.push_back(single_node.second);
 		}
 		
-		tick++;
-		if (exit) break;
+		int tick = 0;
+		while (tick <= ml_max_tick)
+		{
+			std::cout << "tick: " << tick << " (" << ml_max_tick << ")" << std::endl;
+			bool exit = false;
+			
+			tmt::ParallelExecution([&drop_rate_lock, &drop_rate, &tick, &train_dataset, &ml_train_batch_size, &ml_dataset_all_possible_labels](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
+				if (tick >= single_node->next_train_tick)
+				{
+					std::vector<Ml::tensor_blob_like<model_datatype>> train_data, train_label;
+					std::tie(train_data, train_label) = get_dataset_by_node_type(train_dataset, *single_node, ml_train_batch_size, ml_dataset_all_possible_labels);
+					
+					std::random_device dev;
+					std::mt19937 rng(dev());
+					std::uniform_int_distribution<int> distribution(0, int(single_node->training_interval_tick.size()) - 1);
+					single_node->next_train_tick += single_node->training_interval_tick[distribution(rng)];
+					
+					auto parameter_before = single_node->solver->get_parameter();
+					single_node->train_model(train_data, train_label, true);
+					auto output_opt = single_node->generate_model_sent();
+					if (!output_opt)
+					{
+						LOG(INFO) << "ignore output for node " << single_node->name << " at tick " << tick;
+						return;// Ignore the observer node since it does not train or send model to other nodes.
+					}
+					auto parameter_after = *output_opt;
+					auto parameter_output = parameter_after;
+					
+					Ml::model_compress_type type;
+					if (single_node->model_generation_type == Ml::model_compress_type::compressed_by_diff)
+					{
+						//drop models
+						size_t total_weight = 0, dropped_count = 0;
+						auto compressed_model = Ml::model_compress::compress_by_diff_get_model(parameter_before, parameter_after, single_node->filter_limit, &total_weight, &dropped_count);
+						std::string compress_model_str = Ml::model_compress::compress_by_diff_lz_compress(compressed_model);
+						{
+							std::lock_guard guard(drop_rate_lock);
+							drop_rate << "node:" << single_node->name << "    tick:" << tick << "    drop:" << ((float) dropped_count) / float(total_weight) << "(" << dropped_count << "/" << total_weight << ")"
+							          << "    compressed_size:" << compress_model_str.size() << std::endl;
+						}
+						parameter_output = compressed_model;
+						type = Ml::model_compress_type::compressed_by_diff;
+					}
+					else
+					{
+						type = Ml::model_compress_type::normal;
+					}
+					
+					//add ML network to FedAvg buffer
+					for (auto updating_node : single_node->peers)
+					{
+						std::lock_guard guard(updating_node->parameter_buffer_lock);
+						updating_node->parameter_buffer.emplace_back(single_node->name, type, parameter_output);
+					}
+					
+				}
+			}, node_vector_container.size(), node_vector_container.data());
+			
+			//check fedavg buffer full
+			tmt::ParallelExecution([&tick,&test_dataset,&ml_test_batch_size,&ml_dataset_all_possible_labels,&solver_for_testing](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
+				if (single_node->parameter_buffer.size() >= single_node->buffer_size)
+				{
+					//update model
+					auto parameter = single_node->solver->get_parameter();
+					std::vector<updated_model<model_datatype>> received_models;
+					received_models.resize(single_node->parameter_buffer.size());
+					for (int i = 0; i < received_models.size(); ++i)
+					{
+						auto[node_name, type, model] = single_node->parameter_buffer[i];
+						received_models[i].model_parameter = model;
+						received_models[i].type = type;
+						received_models[i].generator_address = node_name;
+						received_models[i].accuracy = 0;
+					}
+					
+					float self_accuracy = 0;
+					std::thread self_accuracy_thread([&single_node, &test_dataset, &ml_test_batch_size, &self_accuracy, &ml_dataset_all_possible_labels]()
+					                                 {
+						                                 //auto [test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
+						                                 auto[test_data, test_label] = get_dataset_by_node_type(test_dataset, *single_node, ml_test_batch_size, ml_dataset_all_possible_labels);
+						                                 self_accuracy = single_node->solver->evaluation(test_data, test_label);
+					                                 });
+					size_t worker = received_models.size() > std::thread::hardware_concurrency() ? std::thread::hardware_concurrency() : received_models.size();
+					auto_multi_thread::ParallelExecution_with_thread_index(worker, [parameter, &single_node, &solver_for_testing, &test_dataset, &ml_test_batch_size, &ml_dataset_all_possible_labels](uint32_t index, uint32_t thread_index, updated_model<model_datatype> &model)
+					{
+						auto output_model = parameter;
+						if (model.type == Ml::model_compress_type::compressed_by_diff)
+						{
+							output_model.patch_weight(model.model_parameter);
+						}
+						else if (model.type == Ml::model_compress_type::normal)
+						{
+							output_model = model.model_parameter;
+						}
+						else
+						{
+							LOG(FATAL) << "unknown model type";
+						}
+						solver_for_testing[thread_index].set_parameter(output_model);
+						auto[test_data, test_label] = get_dataset_by_node_type(test_dataset, *single_node, ml_test_batch_size, ml_dataset_all_possible_labels);
+						model.accuracy = solver_for_testing[thread_index].evaluation(test_data, test_label);
+					}, received_models.size(), received_models.data());
+					self_accuracy_thread.join();
+					std::cout << (boost::format("tick: %1%, node: %2%, accuracy: %3%") % tick % single_node->name % self_accuracy).str() << std::endl;
+					auto &reputation_map = single_node->reputation_map;
+					reputation_dll.get()->update_model(parameter, self_accuracy, received_models, reputation_map);
+					single_node->solver->set_parameter(parameter);
+					
+					//print reputation map
+					*single_node->reputation_output << tick;
+					for (const auto &reputation_pair : reputation_map)
+					{
+						*single_node->reputation_output << "," << reputation_pair.second;
+					}
+					*single_node->reputation_output << std::endl;
+					
+					//clear buffer and start new loop
+					single_node->parameter_buffer.clear();
+				}
+			}, node_vector_container.size(), node_vector_container.data());
+			
+			tmt::ParallelExecution([&tick,&solver_non_delayed_testing,&test_dataset,&ml_test_batch_size,&ml_test_interval_tick,&ml_delayed_test_accuracy](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
+				if (tick % ml_test_interval_tick == 0)
+				{
+					if (ml_delayed_test_accuracy)
+					{
+						single_node->nets_record.emplace(tick, std::make_tuple(single_node->solver->get_parameter(), 0.0));
+					}
+					else
+					{
+						auto[test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
+						auto model = single_node->solver->get_parameter();
+						solver_non_delayed_testing->set_parameter(model);
+						auto accuracy = solver_non_delayed_testing->evaluation(test_data, test_label);
+						single_node->nets_accuracy_only_record.emplace(tick, accuracy);
+					}
+				}
+			}, node_vector_container.size(), node_vector_container.data());
+			
+			tick++;
+			if (exit) break;
+		}
 	}
+	
 	delete[] solver_for_testing;
 	
 	drop_rate.flush();
@@ -661,7 +682,7 @@ int main(int argc, char *argv[])
 		std::atomic_int current_progress = 0;
 		constexpr int step = 5;
 		auto_multi_thread::ParallelExecution_with_thread_index(worker, [&current_progress, &total, &progress_counter, &solver_for_final_testing, &test_dataset, &ml_test_batch_size](uint32_t index, uint32_t thread_index,
-		                                                                                                                    std::tuple<Ml::caffe_parameter_net<model_datatype>, float> &modeL_accuracy)
+		                                                                                                                                                                             std::tuple<Ml::caffe_parameter_net<model_datatype>, float> &modeL_accuracy)
 		{
 			auto&[model, accuracy] = modeL_accuracy;
 			auto[test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
@@ -670,13 +691,14 @@ int main(int argc, char *argv[])
 			
 			progress_counter++;
 			std::mutex cout_lock;
+			bool locked = cout_lock.try_lock();
 			if (int(float(progress_counter) / float(total) * 100.0) > current_progress)
 			{
-				std::lock_guard guard(cout_lock);
 				std::cout << "testing - " << current_progress << "%" << std::endl;
 				std::cout.flush();
 				current_progress += step;
 			}
+			if (locked) cout_lock.unlock();
 		}, test_modeL_container.size(), test_modeL_container.data());
 		std::cout << "testing - 100%" << std::endl;
 		

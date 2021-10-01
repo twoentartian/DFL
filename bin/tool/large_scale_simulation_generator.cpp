@@ -140,9 +140,18 @@ int main(int argc, char* argv[])
 		std::vector<std::vector<int>> node_connections;
 		node_connections.resize(node_count);
 		std::random_device rd;
+		std::mt19937 g(rd());
 		for (int i = 0; i < node_count; ++i)
 		{
-			std::sample(node_list_ex_self.begin(), node_list_ex_self.end(), std::back_inserter(node_connections[i]), node_peer_connection_count, std::mt19937{rd()});
+			std::shuffle(node_list_ex_self.begin(), node_list_ex_self.end(), g);
+			int count = node_peer_connection_count;
+			auto iter = node_list_ex_self.begin();
+			while (count --)
+			{
+				node_connections[i].push_back(*iter);
+				iter++;
+			}
+			
 			for (auto &peer : node_connections[i])
 			{
 				if (peer >= i)
@@ -156,10 +165,12 @@ int main(int argc, char* argv[])
 		node_topology_json.clear();
 		for (int i = 0; i < node_count; ++i)
 		{
+			std::cout << std::to_string(i) << node_peer_connection_type << "{";
 			if (node_peer_connection_type == "--")
 			{
 				for (int j = 0; j < node_peer_connection_count/2; ++j)
 				{
+					std::cout << std::to_string(node_connections[i][j]) << ", ";
 					node_topology_json.push_back(std::to_string(i) + node_peer_connection_type + std::to_string(node_connections[i][j]));
 				}
 			}
@@ -167,9 +178,11 @@ int main(int argc, char* argv[])
 			{
 				for (int j = 0; j < node_peer_connection_count; ++j)
 				{
+					std::cout << std::to_string(node_connections[i][j]) << ", ";
 					node_topology_json.push_back(std::to_string(i) + node_peer_connection_type + std::to_string(node_connections[i][j]));
 				}
 			}
+			std::cout << "}" << std::endl;
 
 		}
 		

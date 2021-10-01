@@ -9,13 +9,13 @@ int main()
 		                                    {
 			                                    std::lock_guard guard(lock);
 			                                    //std::cout << "now: " << index << std::endl;
-		                                    }, 10000000);)
+		                                    }, 100000);)
 	
 	MEASURE_TIME(tmt::ParallelExecution_StepIncremental([&lock](uint32_t index, uint32_t thread_index)
 		                                                    {
 			                                                    std::lock_guard guard(lock);
 			                                                    //std::cout << "now: " << index << std::endl;
-		                                                    }, 10000000);)
+		                                                    }, 100000);)
 	
 	return 0;
 }
