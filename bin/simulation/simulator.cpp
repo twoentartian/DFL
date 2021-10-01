@@ -1,6 +1,7 @@
 //
 // Originally created by tyd, the malicious part is by jxzhang on 09-08-21.
 //
+///** Notice: this simulator will be replaced by simulator_mt in the future, new features do not apply to this simulator.
 
 #include <thread>
 #include <unordered_map>
