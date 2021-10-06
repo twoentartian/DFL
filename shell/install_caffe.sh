@@ -15,18 +15,25 @@ cd "3rd" || exit
 sudo apt-get install -y libatlas-base-dev liblapack-dev libblas-dev
 
 # protobuf
-sudo apt-get install autoconf automake libtool curl make g++ unzip -y
-git clone https://github.com/google/protobuf.git
-cd protobuf || exit
-git checkout 3.3.x
-git submodule update --init --recursive
-./autogen.sh
-./configure
-make -j12
-make check
-sudo make install
-sudo ldconfig
-cd ..
+#! /bin/bash
+if type protoc >/dev/null 2>&1; then
+  echo 'protobuf already installed'
+else
+  echo 'installing protobuf'
+  sudo apt-get install autoconf automake libtool curl make g++ unzip -y
+  git clone https://github.com/google/protobuf.git
+  cd protobuf || exit
+  git checkout 3.3.x
+  git submodule update --init --recursive
+  ./autogen.sh
+  ./configure
+  make -j12
+  make check
+  sudo make install
+  sudo ldconfig
+  cd ..
+fi
+
 
 # OpenCV
 if [ ! -d "./opencv" ]; then
@@ -47,16 +54,32 @@ sudo apt install -y libleveldb-dev libsnappy-dev
 sudo apt install -y liblmdb-dev
 
 # other dependencies
-sudo apt install -y libgoogle-glog-dev libgflags-dev libgflags-dev libhdf5-dev
+sudo apt install -y libgoogle-glog-dev libgflags-dev libgflags-dev libhdf5-dev libturbojpeg0-dev libopenblas-dev
 
 # caffe
-if [ ! -d "./caffe" ]; then
-  git clone git@github.com:BVLC/caffe.git
-fi
-cd caffe ||exit
-cp ../../shell/caffe_config/Makefile.config .
-make all -j"$(nproc)"
+if type nvcc >/dev/null 2>&1; then
+  echo 'cuda detected, use nvidia caffe'
+  if [ ! -d "./caffe" ]; then
+    git clone https://github.com/twoentartian/caffe.git
+  fi
+  cd caffe ||exit
+  cp ../../shell/caffe_config/Makefile.config .
+  make all -j"$(nproc)"
 
-protoc src/caffe/proto/caffe.proto --cpp_out=.
-mkdir include/caffe/proto
-mv src/caffe/proto/caffe.pb.h include/caffe/proto
+  protoc src/caffe/proto/caffe.proto --cpp_out=.
+  mkdir include/caffe/proto
+  mv src/caffe/proto/caffe.pb.h include/caffe/proto
+else
+  echo 'cuda not detected, use BLVC caffe'
+  if [ ! -d "./caffe" ]; then
+    git clone https://github.com/BVLC/caffe.git
+  fi
+  cd caffe ||exit
+  cp ../../shell/caffe_config/Makefile.config .
+  make all -j"$(nproc)"
+
+  protoc src/caffe/proto/caffe.proto --cpp_out=.
+  mkdir include/caffe/proto
+  mv src/caffe/proto/caffe.pb.h include/caffe/proto
+fi
+

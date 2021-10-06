@@ -7,6 +7,7 @@
 #include <fstream>
 #include <set>
 #include <atomic>
+#include <chrono>
 
 #include <glog/logging.h>
 
@@ -125,6 +126,10 @@ int main(int argc, char *argv[])
 	if (!std::filesystem::exists(log_path)) std::filesystem::create_directories(log_path);
 	google::SetLogDestination(google::INFO, (log_path.string() + "/").c_str());
 	
+	//reputation folder
+	std::filesystem::path reputation_folder = output_path / "reputation";
+	if (!std::filesystem::exists(reputation_folder)) std::filesystem::create_directories(reputation_folder);
+	
 	//load configuration
 	configuration_file config;
 	config.SetDefaultConfiguration(get_default_simulation_configuration());
@@ -150,6 +155,8 @@ int main(int argc, char *argv[])
 	auto ml_train_batch_size = *config.get<int>("ml_train_batch_size");
 	auto ml_test_interval_tick = *config.get<int>("ml_test_interval_tick");
 	auto ml_test_batch_size = *config.get<int>("ml_test_batch_size");
+	
+	auto report_time_remaining_per_tick_elapsed = *config.get<int>("report_time_remaining_per_tick_elapsed");
 	
 	std::vector<int> ml_dataset_all_possible_labels = *config.get_vec<int>("ml_dataset_all_possible_labels");
 	std::vector<float> ml_non_iid_normal_weight = *config.get_vec<float>("ml_non_iid_normal_weight");
@@ -223,7 +230,7 @@ int main(int argc, char *argv[])
 		
 		//load models solver and open reputation_fileS
 		iter->second->solver->load_caffe_model(ml_solver_proto);
-		iter->second->open_reputation_file(output_path);
+		iter->second->open_reputation_file(reputation_folder);
 		
 		//dataset mode
 		const std::string dataset_mode_str = single_node["dataset_mode"];
@@ -502,6 +509,8 @@ int main(int argc, char *argv[])
 	{
 		std::vector<node<model_datatype>*> node_vector_container;
 		node_vector_container.reserve(node_container.size());
+		auto last_time_point = std::chrono::system_clock::now();
+		
 		for (auto &single_node : node_container)
 		{
 			node_vector_container.push_back(single_node.second);
@@ -511,9 +520,23 @@ int main(int argc, char *argv[])
 		while (tick <= ml_max_tick)
 		{
 			std::cout << "tick: " << tick << " (" << ml_max_tick << ")" << std::endl;
+			LOG(INFO) << "tick: " << tick << " (" << ml_max_tick << ")";
+			
+			if (tick != 0 && tick % report_time_remaining_per_tick_elapsed == 0)
+			{
+				auto now = std::chrono::system_clock::now();
+				std::chrono::duration<float, std::milli> time_elapsed_ms = now - last_time_point;
+				last_time_point = now;
+				float speed_ms_per_tick = time_elapsed_ms.count() / float(report_time_remaining_per_tick_elapsed);
+				std::chrono::milliseconds time_remain_ms(int(float(ml_max_tick - tick) * speed_ms_per_tick));
+				std::time_t est_finish_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now() + time_remain_ms);
+				std::tm est_finish_time_tm = *std::localtime(&est_finish_time);
+				std::cout << "est finish at: " << std::put_time( &est_finish_time_tm, "%Y-%m-%d %H:%M:%S") << std::endl;
+			}
+			
 			bool exit = false;
 			
-			tmt::ParallelExecution([&drop_rate_lock, &drop_rate, &tick, &train_dataset, &ml_train_batch_size, &ml_dataset_all_possible_labels](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
+			tmt::ParallelExecution_StepIncremental([&drop_rate_lock, &drop_rate, &tick, &train_dataset, &ml_train_batch_size, &ml_dataset_all_possible_labels](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
 				if (tick >= single_node->next_train_tick)
 				{
 					std::vector<Ml::tensor_blob_like<model_datatype>> train_data, train_label;
@@ -566,7 +589,7 @@ int main(int argc, char *argv[])
 			}, node_vector_container.size(), node_vector_container.data());
 			
 			//check fedavg buffer full
-			tmt::ParallelExecution([&tick,&test_dataset,&ml_test_batch_size,&ml_dataset_all_possible_labels,&solver_for_testing](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
+			tmt::ParallelExecution_StepIncremental([&tick,&test_dataset,&ml_test_batch_size,&ml_dataset_all_possible_labels,&solver_for_testing](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
 				if (single_node->parameter_buffer.size() >= single_node->buffer_size)
 				{
 					//update model
@@ -610,7 +633,9 @@ int main(int argc, char *argv[])
 						model.accuracy = solver_for_testing[thread_index].evaluation(test_data, test_label);
 					}, received_models.size(), received_models.data());
 					self_accuracy_thread.join();
-					std::cout << (boost::format("tick: %1%, node: %2%, accuracy: %3%") % tick % single_node->name % self_accuracy).str() << std::endl;
+					std::string log_msg = (boost::format("tick: %1%, node: %2%, accuracy: %3%") % tick % single_node->name % self_accuracy).str();
+					std::cout << log_msg << std::endl;
+					LOG(INFO) << log_msg;
 					auto &reputation_map = single_node->reputation_map;
 					reputation_dll.get()->update_model(parameter, self_accuracy, received_models, reputation_map);
 					single_node->solver->set_parameter(parameter);
@@ -628,23 +653,26 @@ int main(int argc, char *argv[])
 				}
 			}, node_vector_container.size(), node_vector_container.data());
 			
-			tmt::ParallelExecution([&tick,&solver_non_delayed_testing,&test_dataset,&ml_test_batch_size,&ml_test_interval_tick,&ml_delayed_test_accuracy](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
-				if (tick % ml_test_interval_tick == 0)
+			if (tick % ml_test_interval_tick == 0)
+			{
+				if (ml_delayed_test_accuracy)
 				{
-					if (ml_delayed_test_accuracy)
-					{
+					tmt::ParallelExecution([&tick,&solver_non_delayed_testing,&test_dataset,&ml_test_batch_size,&ml_test_interval_tick,&ml_delayed_test_accuracy](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
 						single_node->nets_record.emplace(tick, std::make_tuple(single_node->solver->get_parameter(), 0.0));
-					}
-					else
-					{
+					}, node_vector_container.size(), node_vector_container.data());
+				}
+				else
+				{
+					tmt::ParallelExecution([&tick,&solver_non_delayed_testing,&test_dataset,&ml_test_batch_size,&ml_test_interval_tick,&ml_delayed_test_accuracy](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
 						auto[test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
 						auto model = single_node->solver->get_parameter();
 						solver_non_delayed_testing->set_parameter(model);
 						auto accuracy = solver_non_delayed_testing->evaluation(test_data, test_label);
 						single_node->nets_accuracy_only_record.emplace(tick, accuracy);
-					}
+					}, node_vector_container.size(), node_vector_container.data());
 				}
-			}, node_vector_container.size(), node_vector_container.data());
+			}
+
 			
 			tick++;
 			if (exit) break;

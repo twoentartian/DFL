@@ -86,9 +86,10 @@ private:
 		lock.lock();
 		while (index < count)
 		{
+			const int current_index = int (index);
 			index++;
 			lock.unlock();
-			func(index, threadNo, data[index]...);
+			func(current_index, threadNo, data[current_index]...);
 			lock.lock();
 		}
 		lock.unlock();
