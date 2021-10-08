@@ -27,6 +27,7 @@
 #include "./default_simulation_config.hpp"
 #include "./simulation_util.hpp"
 #include "./node.hpp"
+#include "./simulation_records.hpp"
 
 /** assumptions in this simulator:
  *  (1) no transaction transmission time
@@ -149,12 +150,12 @@ int main(int argc, char *argv[])
 	auto ml_train_dataset_label = *config.get<std::string>("ml_train_dataset_label");
 	auto ml_test_dataset = *config.get<std::string>("ml_test_dataset");
 	auto ml_test_dataset_label = *config.get<std::string>("ml_test_dataset_label");
-	auto ml_delayed_test_accuracy = *config.get<bool>("ml_delayed_test_accuracy");
 	
 	auto ml_max_tick = *config.get<int>("ml_max_tick");
 	auto ml_train_batch_size = *config.get<int>("ml_train_batch_size");
 	auto ml_test_interval_tick = *config.get<int>("ml_test_interval_tick");
 	auto ml_test_batch_size = *config.get<int>("ml_test_batch_size");
+	auto ml_model_weight_diff_record_interval_tick = *config.get<int>("ml_model_weight_diff_record_interval_tick");
 	
 	auto report_time_remaining_per_tick_elapsed = *config.get<int>("report_time_remaining_per_tick_elapsed");
 	
@@ -183,14 +184,6 @@ int main(int argc, char *argv[])
 	{
 		std::filesystem::path ml_reputation_dll(ml_reputation_dll_path);
 		std::filesystem::copy(ml_reputation_dll_path, output_path / ml_reputation_dll.filename());
-	}
-	
-	//Solver for non_delayed testing
-	std::shared_ptr<Ml::MlCaffeModel<model_datatype, caffe::SGDSolver>> solver_non_delayed_testing;
-	if (!ml_delayed_test_accuracy)
-	{
-		solver_non_delayed_testing.reset(new Ml::MlCaffeModel<model_datatype, caffe::SGDSolver>());
-		solver_non_delayed_testing->load_caffe_model(ml_solver_proto);
 	}
 	
 	//load node configurations
@@ -477,14 +470,6 @@ int main(int argc, char *argv[])
 		}
 	}
 	
-	//solver for testing
-	size_t solver_for_testing_size = std::thread::hardware_concurrency();
-	auto *solver_for_testing = new Ml::MlCaffeModel<float, caffe::SGDSolver>[solver_for_testing_size];
-	for (int i = 0; i < solver_for_testing_size; ++i)
-	{
-		solver_for_testing[i].load_caffe_model(ml_solver_proto);
-	}
-	
 	//load dataset
 	Ml::data_converter<model_datatype> train_dataset;
 	train_dataset.load_dataset_mnist(ml_train_dataset, ml_train_dataset_label);
@@ -505,16 +490,54 @@ int main(int argc, char *argv[])
 		*single_node.second->reputation_output << std::endl;
 	}
 	
+
+	
+	//node vector container
+	std::vector<node<model_datatype>*> node_vector_container;
+	node_vector_container.reserve(node_container.size());
+	for (auto &single_node : node_container)
+	{
+		node_vector_container.push_back(single_node.second);
+	}
+	
+	//caffe solver for fedAvg process
+	size_t solver_for_testing_size = std::thread::hardware_concurrency();
+	auto* solver_for_testing = new Ml::MlCaffeModel<float, caffe::SGDSolver>[solver_for_testing_size];
+	for (int i = 0; i < solver_for_testing_size; ++i)
+	{
+		solver_for_testing[i].load_caffe_model(ml_solver_proto);
+	}
+	
+	//services
+	std::unordered_map<std::string, std::shared_ptr<record_service<model_datatype>>> record_services;
+	record_services.emplace("accuracy", new accuracy_record<model_datatype>());
+	record_services.emplace("weights", new model_weights_record<model_datatype>());
+	
+	//accuracy service
+	{
+		auto service_iter = record_services.find("accuracy");
+		std::static_pointer_cast<accuracy_record<model_datatype>>(service_iter->second)->ml_solver_proto = ml_solver_proto;
+		std::static_pointer_cast<accuracy_record<model_datatype>>(service_iter->second)->ml_test_interval_tick = ml_test_interval_tick;
+		std::static_pointer_cast<accuracy_record<model_datatype>>(service_iter->second)->test_dataset = &test_dataset;
+		std::static_pointer_cast<accuracy_record<model_datatype>>(service_iter->second)->ml_test_batch_size = ml_test_batch_size;
+		std::static_pointer_cast<accuracy_record<model_datatype>>(service_iter->second)->node_vector_container = &node_vector_container;
+		service_iter->second->init_service(output_path, node_container);
+	}
+	
+	//weights record
+	{
+		auto service_iter = record_services.find("weights");
+		std::static_pointer_cast<model_weights_record<model_datatype>>(service_iter->second)->node_vector_container = &node_vector_container;
+		std::static_pointer_cast<model_weights_record<model_datatype>>(service_iter->second)->ml_model_weight_diff_record_interval_tick = ml_model_weight_diff_record_interval_tick;
+		service_iter->second->init_service(output_path, node_container);
+	}
+	
 	////////////  BEGIN SIMULATION  ////////////
 	{
-		std::vector<node<model_datatype>*> node_vector_container;
-		node_vector_container.reserve(node_container.size());
+
 		auto last_time_point = std::chrono::system_clock::now();
 		
-		for (auto &single_node : node_container)
-		{
-			node_vector_container.push_back(single_node.second);
-		}
+
 		
 		int tick = 0;
 		while (tick <= ml_max_tick)
@@ -536,6 +559,7 @@ int main(int argc, char *argv[])
 			
 			bool exit = false;
 			
+			//train the model
 			tmt::ParallelExecution_StepIncremental([&drop_rate_lock, &drop_rate, &tick, &train_dataset, &ml_train_batch_size, &ml_dataset_all_possible_labels](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
 				if (tick >= single_node->next_train_tick)
 				{
@@ -653,170 +677,26 @@ int main(int argc, char *argv[])
 				}
 			}, node_vector_container.size(), node_vector_container.data());
 			
-			if (tick % ml_test_interval_tick == 0)
+			//services
+			for (auto& [name, service_instance]: record_services)
 			{
-				if (ml_delayed_test_accuracy)
-				{
-					tmt::ParallelExecution([&tick,&solver_non_delayed_testing,&test_dataset,&ml_test_batch_size,&ml_test_interval_tick,&ml_delayed_test_accuracy](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
-						single_node->nets_record.emplace(tick, std::make_tuple(single_node->solver->get_parameter(), 0.0));
-					}, node_vector_container.size(), node_vector_container.data());
-				}
-				else
-				{
-					tmt::ParallelExecution([&tick,&solver_non_delayed_testing,&test_dataset,&ml_test_batch_size,&ml_test_interval_tick,&ml_delayed_test_accuracy](uint32_t index, uint32_t thread_index, node<model_datatype>* single_node){
-						auto[test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
-						auto model = single_node->solver->get_parameter();
-						solver_non_delayed_testing->set_parameter(model);
-						auto accuracy = solver_non_delayed_testing->evaluation(test_data, test_label);
-						single_node->nets_accuracy_only_record.emplace(tick, accuracy);
-					}, node_vector_container.size(), node_vector_container.data());
-				}
+				service_instance->process_per_tick(tick, node_container);
 			}
-
 			
 			tick++;
 			if (exit) break;
 		}
 	}
 	
+	for (auto& [name, service_instance]: record_services)
+	{
+		service_instance->destruction_service();
+	}
+	
 	delete[] solver_for_testing;
 	
 	drop_rate.flush();
 	drop_rate.close();
-	
-	//calculating accuracy
-	if (ml_delayed_test_accuracy)
-	{
-		std::cout << "Begin calculating accuracy" << std::endl;
-		size_t worker = std::thread::hardware_concurrency();
-		auto *solver_for_final_testing = new Ml::MlCaffeModel<model_datatype, caffe::SGDSolver>[worker];
-		for (int i = 0; i < worker; ++i)
-		{
-			solver_for_final_testing[i].load_caffe_model(ml_solver_proto);
-		}
-		
-		std::vector<std::tuple<Ml::caffe_parameter_net<model_datatype>, model_datatype>> test_modeL_container;
-		for (auto &single_node : node_container)
-		{
-			for (auto &single_model: single_node.second->nets_record)
-			{
-				test_modeL_container.push_back(single_model.second);
-			}
-		}
-		
-		//testing
-		const size_t total = test_modeL_container.size();
-		std::atomic_int progress_counter = 0;
-		std::atomic_int current_progress = 0;
-		constexpr int step = 5;
-		auto_multi_thread::ParallelExecution_with_thread_index(worker, [&current_progress, &total, &progress_counter, &solver_for_final_testing, &test_dataset, &ml_test_batch_size](uint32_t index, uint32_t thread_index,
-		                                                                                                                                                                             std::tuple<Ml::caffe_parameter_net<model_datatype>, float> &modeL_accuracy)
-		{
-			auto&[model, accuracy] = modeL_accuracy;
-			auto[test_data, test_label] = test_dataset.get_random_data(ml_test_batch_size);
-			solver_for_final_testing[thread_index].set_parameter(model);
-			accuracy = solver_for_final_testing[thread_index].evaluation(test_data, test_label);
-			
-			progress_counter++;
-			std::mutex cout_lock;
-			bool locked = cout_lock.try_lock();
-			if (int(float(progress_counter) / float(total) * 100.0) > current_progress)
-			{
-				std::cout << "testing - " << current_progress << "%" << std::endl;
-				std::cout.flush();
-				current_progress += step;
-			}
-			if (locked) cout_lock.unlock();
-		}, test_modeL_container.size(), test_modeL_container.data());
-		std::cout << "testing - 100%" << std::endl;
-		
-		//apply back to map
-		size_t counter = 0;
-		for (auto &single_node : node_container)
-		{
-			for (auto &single_model: single_node.second->nets_record)
-			{
-				single_model.second = test_modeL_container[counter];
-				counter++;
-			}
-		}
-		
-		delete[] solver_for_final_testing;
-	}
-	
-	//print accuracy to file
-	{
-		std::ofstream accuracy_file(output_path / "accuracy.csv", std::ios::binary);
-		std::vector<int> all_ticks;
-		for (auto &single_node : node_container)
-		{
-			if (ml_delayed_test_accuracy)
-			{
-				for (auto &single_model: single_node.second->nets_record)
-				{
-					all_ticks.push_back(single_model.first);
-				}
-			}
-			else
-			{
-				for (auto &single_model: single_node.second->nets_accuracy_only_record)
-				{
-					all_ticks.push_back(single_model.first);
-				}
-			}
-		}
-		std::set<int> all_ticks_set;
-		for (int &all_tick : all_ticks) all_ticks_set.insert(all_tick);
-		all_ticks.assign(all_ticks_set.begin(), all_ticks_set.end());
-		std::sort(all_ticks.begin(), all_ticks.end());
-		
-		//print first line
-		accuracy_file << "tick";
-		for (auto &single_node : node_container)
-		{
-			accuracy_file << "," << single_node.second->name;
-		}
-		accuracy_file << std::endl;
-		
-		//print accuracy
-		for (auto current_tick: all_ticks)
-		{
-			accuracy_file << current_tick;
-			for (auto &single_node : node_container)
-			{
-				if (ml_delayed_test_accuracy)
-				{
-					auto iter_find = single_node.second->nets_record.find(current_tick);
-					if (iter_find != single_node.second->nets_record.end())
-					{
-						auto&[model, accuracy] = iter_find->second;
-						accuracy_file << "," << accuracy;
-					}
-					else
-					{
-						accuracy_file << "," << " ";
-					}
-				}
-				else
-				{
-					auto iter_find = single_node.second->nets_accuracy_only_record.find(current_tick);
-					if (iter_find != single_node.second->nets_accuracy_only_record.end())
-					{
-						auto accuracy = iter_find->second;
-						accuracy_file << "," << accuracy;
-					}
-					else
-					{
-						accuracy_file << "," << " ";
-					}
-				}
-			}
-			accuracy_file << std::endl;
-		}
-		
-		accuracy_file.flush();
-		accuracy_file.close();
-	}
 	
 	return 0;
 }

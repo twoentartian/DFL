@@ -15,12 +15,12 @@ configuration_file::json get_default_simulation_configuration()
 	output["ml_train_dataset_label"] = "../../../dataset/MNIST/train-labels.idx1-ubyte";
 	output["ml_test_dataset"] = "../../../dataset/MNIST/t10k-images.idx3-ubyte";
 	output["ml_test_dataset_label"] = "../../../dataset/MNIST/t10k-labels.idx1-ubyte";
-	output["ml_delayed_test_accuracy"] = false;
 	
 	output["ml_max_tick"] = 1200;
 	output["ml_train_batch_size"] = 64;
 	output["ml_test_interval_tick"] = 10;
 	output["ml_test_batch_size"] = 100;
+	output["ml_model_weight_diff_record_interval_tick"] = 10;
 	output["ml_non_iid_normal_weight"] = configuration_file::json::array({10.0, 15.0});
 	output["ml_dataset_all_possible_labels"] = configuration_file::json::array({0,1,2,3,4,5,6,7,8,9});
 	output["ml_reputation_dll_path"] = "../reputation_sdk/sample/libreputation_api_sample.so";

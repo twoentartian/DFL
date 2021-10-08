@@ -236,6 +236,14 @@ namespace Ml {
 		    return output;
 	    }
 	    
+	    void abs()
+	    {
+		    for (auto& value: _data)
+		    {
+			    if (value < 0 ) value = -value;
+		    }
+	    }
+	    
 	    size_t size()
 	    {
 		    return _data.size();

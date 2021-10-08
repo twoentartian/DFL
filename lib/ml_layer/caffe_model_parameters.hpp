@@ -173,6 +173,12 @@ namespace Ml
 		    if (this->_blob_p->empty()) return 0;
 		    return this->_blob_p->sum();
 	    }
+	    
+	    void abs()
+	    {
+		    if (!this->_blob_p->empty())
+		    	_blob_p->abs();
+	    }
 	
 	    size_t size()
 	    {
@@ -352,6 +358,14 @@ namespace Ml
 			    output += single_layer.sum();
 		    }
 		    return output;
+	    }
+	
+	    void abs()
+	    {
+		    for (auto& single_layer: _layers)
+		    {
+			    single_layer.abs();
+		    }
 	    }
 	
 	    size_t size()

@@ -62,7 +62,7 @@ public:
 	std::string name;
 	dataset_mode_type dataset_mode;
 	node_type type;
-	std::unordered_map<int, std::tuple<Ml::caffe_parameter_net<model_datatype>, float>> nets_record; //for delayed accuracy testing
+	//std::unordered_map<int, std::tuple<Ml::caffe_parameter_net<model_datatype>, float>> nets_record; //for delayed accuracy testing
 	std::unordered_map<int, model_datatype> nets_accuracy_only_record; //for non-delayed accuracy testing
 	int next_train_tick;
 	std::unordered_map<int, std::tuple<float, float>> special_non_iid_distribution; //label:{min,max}
@@ -83,9 +83,9 @@ public:
 	
 	virtual std::optional<Ml::caffe_parameter_net<model_datatype>> generate_model_sent() = 0;
 	
-	virtual node<model_datatype>* new_node(std::string _name, size_t buf_size) = 0;
-
-	static node<model_datatype>* get_node_by_type(const std::string type)
+	virtual node<model_datatype> *new_node(std::string _name, size_t buf_size) = 0;
+	
+	static node<model_datatype> *get_node_by_type(const std::string type)
 	{
 		auto iter = RegisteredNodeType.find(type);
 		if (iter == RegisteredNodeType.end())
@@ -97,11 +97,12 @@ public:
 			return iter->second;
 		}
 	}
+
 private:
-	static std::unordered_map<std::string, node<model_datatype>*> RegisteredNodeType;
+	static std::unordered_map<std::string, node<model_datatype> *> RegisteredNodeType;
 
 protected:
-	static void _registerNodeType(const std::string& name, node<model_datatype>* node)
+	static void _registerNodeType(const std::string &name, node<model_datatype> *node)
 	{
 		auto iter = RegisteredNodeType.find(name);
 		if (iter == RegisteredNodeType.end())
@@ -114,7 +115,8 @@ protected:
 		}
 	}
 };
-template<typename model_datatype> std::unordered_map<std::string, node<model_datatype>*> node<model_datatype>::RegisteredNodeType;
+
+template<typename model_datatype> std::unordered_map<std::string, node<model_datatype> *> node<model_datatype>::RegisteredNodeType;
 
 template<typename model_datatype>
 class normal_node : public node<model_datatype>
@@ -135,7 +137,7 @@ public:
 		node<model_datatype>::_registerNodeType(type_name(), new normal_node("template", 0));
 	}
 	
-	node<model_datatype>* new_node(std::string _name, size_t buf_size) override
+	node<model_datatype> *new_node(std::string _name, size_t buf_size) override
 	{
 		return new normal_node(_name, buf_size);
 	}
@@ -170,7 +172,7 @@ public:
 		node<model_datatype>::_registerNodeType(type_name(), new observer_node("template", 0));
 	}
 	
-	node<model_datatype>* new_node(std::string _name, size_t buf_size) override
+	node<model_datatype> *new_node(std::string _name, size_t buf_size) override
 	{
 		return new observer_node(_name, buf_size);
 	}
@@ -206,7 +208,7 @@ public:
 		node<model_datatype>::_registerNodeType(type_name(), new malicious_model_poisoning_random_model_node("template", 0));
 	}
 	
-	node<model_datatype>* new_node(std::string _name, size_t buf_size) override
+	node<model_datatype> *new_node(std::string _name, size_t buf_size) override
 	{
 		return new malicious_model_poisoning_random_model_node(_name, buf_size);
 	}
@@ -248,7 +250,7 @@ public:
 		node<model_datatype>::_registerNodeType(type_name(), new malicious_model_poisoning_random_model_by_turn_node("template", 0));
 	}
 	
-	node<model_datatype>* new_node(std::string _name, size_t buf_size) override
+	node<model_datatype> *new_node(std::string _name, size_t buf_size) override
 	{
 		return new malicious_model_poisoning_random_model_by_turn_node(_name, buf_size);
 	}
@@ -297,7 +299,7 @@ public:
 		node<model_datatype>::_registerNodeType(type_name(), new malicious_model_poisoning_random_model_biased_0_1_node("template", 0));
 	}
 	
-	node<model_datatype>* new_node(std::string _name, size_t buf_size) override
+	node<model_datatype> *new_node(std::string _name, size_t buf_size) override
 	{
 		return new malicious_model_poisoning_random_model_biased_0_1_node(_name, buf_size);
 	}
@@ -334,14 +336,14 @@ public:
 		node<model_datatype>::_registerNodeType(type_name(), new malicious_duplication_attack_node("template", 0));
 	}
 	
-	node<model_datatype>* new_node(std::string _name, size_t buf_size) override
+	node<model_datatype> *new_node(std::string _name, size_t buf_size) override
 	{
 		return new malicious_duplication_attack_node(_name, buf_size);
 	}
 	
 	void train_model(const std::vector<Ml::tensor_blob_like<model_datatype>> &data, const std::vector<Ml::tensor_blob_like<model_datatype>> &label, bool display) override
 	{
-
+	
 	}
 	
 	std::optional<Ml::caffe_parameter_net<model_datatype>> generate_model_sent() override
@@ -370,7 +372,7 @@ public:
 		node<model_datatype>::_registerNodeType(type_name(), new malicious_data_poisoning_shuffle_label_node("template", 0));
 	}
 	
-	node<model_datatype>* new_node(std::string _name, size_t buf_size) override
+	node<model_datatype> *new_node(std::string _name, size_t buf_size) override
 	{
 		return new malicious_data_poisoning_shuffle_label_node(_name, buf_size);
 	}
@@ -382,8 +384,8 @@ public:
 		std::uniform_int_distribution<int> dist(0, 9);
 		for (int i = 0; i < label_duplicate.size(); ++i)
 		{
-			auto& labels = label_duplicate[i].getData();
-			for (auto& value: labels)
+			auto &labels = label_duplicate[i].getData();
+			for (auto &value: labels)
 			{
 				value = dist(generator);
 			}
@@ -417,7 +419,7 @@ public:
 		node<model_datatype>::_registerNodeType(type_name(), new malicious_data_poisoning_shuffle_label_biased_1_node("template", 0));
 	}
 	
-	node<model_datatype>* new_node(std::string _name, size_t buf_size) override
+	node<model_datatype> *new_node(std::string _name, size_t buf_size) override
 	{
 		return new malicious_data_poisoning_shuffle_label_biased_1_node(_name, buf_size);
 	}
@@ -427,8 +429,8 @@ public:
 		std::vector<Ml::tensor_blob_like<model_datatype>> label_duplicate = label;
 		for (int i = 0; i < label_duplicate.size(); ++i)
 		{
-			auto& labels = label_duplicate[i].getData();
-			for (auto&& single_label : labels)
+			auto &labels = label_duplicate[i].getData();
+			for (auto &&single_label : labels)
 			{
 				single_label++;
 				if (single_label == 10) single_label = 0;
@@ -463,7 +465,7 @@ public:
 		node<model_datatype>::_registerNodeType(type_name(), new malicious_data_poisoning_random_data_node("template", 0));
 	}
 	
-	node<model_datatype>* new_node(std::string _name, size_t buf_size) override
+	node<model_datatype> *new_node(std::string _name, size_t buf_size) override
 	{
 		return new malicious_data_poisoning_random_data_node(_name, buf_size);
 	}
@@ -473,7 +475,7 @@ public:
 		std::vector<Ml::tensor_blob_like<model_datatype>> data_duplicate = data;
 		for (int i = 0; i < data_duplicate.size(); ++i)
 		{
-			data_duplicate[i].random(0.0,1.0);
+			data_duplicate[i].random(0.0, 1.0);
 		}
 		this->solver->train(data_duplicate, label, display);
 	}
