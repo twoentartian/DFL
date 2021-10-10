@@ -64,6 +64,7 @@ if type nvcc >/dev/null 2>&1; then
   fi
   cd caffe ||exit
   cp ../../shell/caffe_config/Makefile.config .
+  cp ../../shell/caffe_config/CMakeLists.txt .
   make all -j"$(nproc)"
 
   protoc src/caffe/proto/caffe.proto --cpp_out=.
@@ -76,6 +77,7 @@ else
   fi
   cd caffe ||exit
   cp ../../shell/caffe_config/Makefile.config .
+  cp ../../shell/caffe_config/CMakeLists.txt .
   make all -j"$(nproc)"
 
   protoc src/caffe/proto/caffe.proto --cpp_out=.
@@ -83,3 +85,6 @@ else
   mv src/caffe/proto/caffe.pb.h include/caffe/proto
 fi
 
+# patch caffe
+cd ../../shell || exit
+sh ./patch_caffe.sh
