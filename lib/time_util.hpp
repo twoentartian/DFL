@@ -21,14 +21,14 @@ public:
 		std::time_t temp = utc_time;
 		std::tm* t = std::gmtime(&temp);
 		std::stringstream ss;
-		ss << std::put_time(t, "%Y-%m-%d %H:%M:%S %Z");
+		ss << std::put_time(t, "%Y-%m-%d_%H:%M:%S_%Z");
 		return ss.str();
 	}
 	
 	static time_t text_to_time(const std::string& text)
 	{
 		std::tm tmp_time;
-		strptime(text.c_str(),"%Y-%m-%d %H:%M:%S %Z",&tmp_time);
+		strptime(text.c_str(),"%Y-%m-%d_%H:%M:%S_%Z",&tmp_time);
 		std::time_t t = timegm(&tmp_time);
 		return t;
 	}

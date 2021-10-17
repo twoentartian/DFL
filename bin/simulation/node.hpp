@@ -7,6 +7,9 @@
 
 #include <optional>
 #include <random>
+#include <set>
+#include <vector>
+#include <unordered_map>
 #include "../../lib/ml_layer.hpp"
 
 enum class dataset_mode_type
@@ -19,7 +22,8 @@ enum class dataset_mode_type
 
 enum node_type
 {
-	normal = 0,
+	unknown_node_type = 0,
+	normal,
 	observer,
 	malicious_model_poisoning_random_model,
 	malicious_model_poisoning_random_model_by_turn,
@@ -37,7 +41,7 @@ template<typename model_datatype>
 class node
 {
 public:
-	node(std::string _name, size_t buf_size) : name(std::move(_name)), next_train_tick(0), buffer_size(buf_size), dataset_mode(dataset_mode_type::unknown)
+	node(std::string _name, size_t buf_size) : name(std::move(_name)), next_train_tick(0), buffer_size(buf_size), planned_buffer_size(buf_size), dataset_mode(dataset_mode_type::unknown), model_generation_type(Ml::model_compress_type::unknown), filter_limit(0.0f), last_measured_accuracy(0.0f), last_measured_tick(0), type(node_type::unknown_node_type)
 	{
 		solver.reset(new Ml::MlCaffeModel<model_datatype, caffe::SGDSolver>());
 	}
@@ -69,6 +73,8 @@ public:
 	std::vector<int> training_interval_tick;
 	
 	size_t buffer_size;
+	size_t planned_buffer_size;
+	
 	std::vector<std::tuple<std::string, Ml::model_compress_type, Ml::caffe_parameter_net<model_datatype>>> parameter_buffer;
 	std::mutex parameter_buffer_lock;
 	std::shared_ptr<Ml::MlCaffeModel<model_datatype, caffe::SGDSolver>> solver;
@@ -77,7 +83,11 @@ public:
 	float filter_limit;
 	std::shared_ptr<std::ofstream> reputation_output;
 	
-	std::vector<node *> peers;
+	std::unordered_map<std::string, node *> peers;
+	std::unordered_map<std::string, node *> planned_peers;
+	
+	float last_measured_accuracy;
+	int last_measured_tick;
 	
 	virtual void train_model(const std::vector<Ml::tensor_blob_like<model_datatype>> &data, const std::vector<Ml::tensor_blob_like<model_datatype>> &label, bool display) = 0;
 	

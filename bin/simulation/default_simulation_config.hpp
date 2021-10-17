@@ -18,9 +18,7 @@ configuration_file::json get_default_simulation_configuration()
 	
 	output["ml_max_tick"] = 1200;
 	output["ml_train_batch_size"] = 64;
-	output["ml_test_interval_tick"] = 10;
 	output["ml_test_batch_size"] = 100;
-	output["ml_model_weight_diff_record_interval_tick"] = 10;
 	output["ml_non_iid_normal_weight"] = configuration_file::json::array({10.0, 15.0});
 	output["ml_dataset_all_possible_labels"] = configuration_file::json::array({0,1,2,3,4,5,6,7,8,9});
 	output["ml_reputation_dll_path"] = "../reputation_sdk/sample/libreputation_api_sample.so";
@@ -42,12 +40,43 @@ configuration_file::json get_default_simulation_configuration()
 	nodes.push_back(node);
 	node["name"] = "2";
 	node["dataset_mode"] = "iid";
-	node["node_type"] = "malicious_random_strategy";
+	node["node_type"] = "malicious_model_poisoning_random_model";
 	nodes.push_back(node);
 	
 	output["nodes"] = nodes;
 	
 	output["node_topology"] = configuration_file::json::array({"fully_connect", "average_degree-2", "1->2", "1--2"});
+	
+	configuration_file::json services = configuration_file::json::object();
+	{
+		configuration_file::json accuracy_service = configuration_file::json::object();
+		accuracy_service["enable"] = true;
+		accuracy_service["interval"] = 20;
+		services["accuracy"] = accuracy_service;
+	}
+	{
+		configuration_file::json weights_service = configuration_file::json::object();
+		weights_service["enable"] = true;
+		weights_service["interval"] = 20;
+		services["weights_diff"] = weights_service;
+	}
+	{
+		configuration_file::json force_broadcast_service = configuration_file::json::object();
+		force_broadcast_service["enable"] = false;
+		force_broadcast_service["broadcast_interval"] = 100;
+		services["force_broadcast_average"] = force_broadcast_service;
+	}
+	{
+		configuration_file::json peer_control_service = configuration_file::json::object();
+		peer_control_service["enable"] = true;
+		peer_control_service["least_peer_change_interval"] = 50;
+		peer_control_service["fedavg_buffer_size"] = "linear"; //// candidates: static, linear
+		peer_control_service["accuracy_threshold_high"] = 0.8;
+		peer_control_service["accuracy_threshold_low"] = 0.2;
+		
+		services["peer_control_service"] = peer_control_service;
+	}
+	output["services"] = services;
 	
 	return output;
 }

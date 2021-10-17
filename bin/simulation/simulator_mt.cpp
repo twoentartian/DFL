@@ -2,6 +2,8 @@
 // Originally created by tyd, the malicious part is by jxzhang on 09-08-21.
 //
 
+#define CPU_ONLY
+
 #include <thread>
 #include <unordered_map>
 #include <fstream>
@@ -25,9 +27,8 @@
 
 #include "../reputation_sdk.hpp"
 #include "./default_simulation_config.hpp"
-#include "./simulation_util.hpp"
 #include "./node.hpp"
-#include "./simulation_records.hpp"
+#include "./simulation_service.hpp"
 
 /** assumptions in this simulator:
  *  (1) no transaction transmission time
@@ -36,66 +37,6 @@
  */
 
 using model_datatype = float;
-
-//return: train_data,train_label
-std::tuple<std::vector<Ml::tensor_blob_like<model_datatype>>, std::vector<Ml::tensor_blob_like<model_datatype>>>
-get_dataset_by_node_type(Ml::data_converter<model_datatype> &dataset, const node<model_datatype> &target_node, int size, const std::vector<int> &ml_dataset_all_possible_labels)
-{
-	Ml::tensor_blob_like<model_datatype> label;
-	label.getShape() = {1};
-	std::vector<Ml::tensor_blob_like<model_datatype>> train_data, train_label;
-	if (target_node.dataset_mode == dataset_mode_type::default_dataset)
-	{
-		//iid dataset
-		std::tie(train_data, train_label) = dataset.get_random_data(size);
-	}
-	else if (target_node.dataset_mode == dataset_mode_type::iid_dataset)
-	{
-		std::random_device dev;
-		std::mt19937 rng(dev());
-		std::uniform_int_distribution<int> distribution(0, int(ml_dataset_all_possible_labels.size()) - 1);
-		for (int i = 0; i < size; ++i)
-		{
-			int label_int = ml_dataset_all_possible_labels[distribution(rng)];
-			label.getData() = {model_datatype(label_int)};
-			auto[train_data_slice, train_label_slice] = dataset.get_random_data_by_Label(label, 1);
-			train_data.insert(train_data.end(), train_data_slice.begin(), train_data_slice.end());
-			train_label.insert(train_label.end(), train_label_slice.begin(), train_label_slice.end());
-		}
-	}
-	else if (target_node.dataset_mode == dataset_mode_type::non_iid_dataset)
-	{
-		//non-iid dataset
-		std::random_device dev;
-		std::mt19937 rng(dev());
-		
-		Ml::non_iid_distribution<model_datatype> label_distribution;
-		for (auto &target_label : ml_dataset_all_possible_labels)
-		{
-			label.getData() = {model_datatype(target_label)};
-			auto iter = target_node.special_non_iid_distribution.find(target_label);
-			if (iter != target_node.special_non_iid_distribution.end())
-			{
-				auto[dis_min, dis_max] = iter->second;
-				if (dis_min == dis_max)
-				{
-					label_distribution.add_distribution(label, dis_min);
-				}
-				else
-				{
-					std::uniform_real_distribution<model_datatype> distribution(dis_min, dis_max);
-					label_distribution.add_distribution(label, distribution(rng));
-				}
-			}
-			else
-			{
-				LOG(ERROR) << "cannot find the desired label";
-			}
-		}
-		std::tie(train_data, train_label) = dataset.get_random_non_iid_dataset(label_distribution, size);
-	}
-	return {train_data, train_label};
-}
 
 std::unordered_map<std::string, node<model_datatype> *> node_container;
 dll_loader<reputation_interface<model_datatype>> reputation_dll;
@@ -153,7 +94,6 @@ int main(int argc, char *argv[])
 	
 	auto ml_max_tick = *config.get<int>("ml_max_tick");
 	auto ml_train_batch_size = *config.get<int>("ml_train_batch_size");
-	auto ml_test_interval_tick = *config.get<int>("ml_test_interval_tick");
 	auto ml_test_batch_size = *config.get<int>("ml_test_batch_size");
 	auto ml_model_weight_diff_record_interval_tick = *config.get<int>("ml_model_weight_diff_record_interval_tick");
 	
@@ -180,6 +120,7 @@ int main(int argc, char *argv[])
 		LOG(FATAL) << "unknown model datatype";
 		return -1;
 	}
+	
 	//backup reputation file
 	{
 		std::filesystem::path ml_reputation_dll(ml_reputation_dll_path);
@@ -188,7 +129,6 @@ int main(int argc, char *argv[])
 	
 	//load node configurations
 	auto nodes_json = config_json["nodes"];
-	size_t max_buffer_size = 0;
 	for (auto &single_node: nodes_json)
 	{
 		const std::string node_name = single_node["name"];
@@ -203,7 +143,6 @@ int main(int argc, char *argv[])
 		
 		//name
 		const int buf_size = single_node["buffer_size"];
-		if (buf_size > max_buffer_size) max_buffer_size = buf_size;
 		
 		const std::string node_type = single_node["node_type"];
 		
@@ -216,10 +155,13 @@ int main(int argc, char *argv[])
 			{
 				LOG(FATAL) << "unknown node type:" << node_type;
 			}
-			temp_node = result->new_node(node_name, buf_size);
+			else
+			{
+				temp_node = result->new_node(node_name, buf_size);
+			}
 		}
 		
-		auto[iter, status]=node_container.emplace(node_name, temp_node);
+		auto[iter, status] = node_container.emplace(node_name, temp_node);
 		
 		//load models solver and open reputation_fileS
 		iter->second->solver->load_caffe_model(ml_solver_proto);
@@ -339,16 +281,10 @@ int main(int argc, char *argv[])
 			
 			auto check_duplicate_peer = [](const node<model_datatype> &target_node, const std::string &peer_name) -> bool
 			{
-				bool duplicate = false;
-				for (const auto &current_connections: target_node.peers)
-				{
-					if (peer_name == current_connections->name)
-					{
-						duplicate = true;
-						break;
-					}
-				}
-				return duplicate;
+				if (target_node.planned_peers.find(peer_name) == target_node.planned_peers.end())
+					return false;
+				else
+					return true;
 			};
 			
 			if (topology_item_str == fully_connect)
@@ -361,7 +297,7 @@ int main(int argc, char *argv[])
 					{
 						if (node_name != target_node_name)
 						{
-							node_inst->peers.push_back(target_node_inst);
+							node_inst->planned_peers.emplace(target_node_inst->name, target_node_inst);
 						}
 					}
 				}
@@ -390,12 +326,12 @@ int main(int argc, char *argv[])
 					for (const std::string &connect_node_name : node_name_list)
 					{
 						//check average degree first to ensure there are already some connects.
-						if (target_node_inst->peers.size() >= degree) break;
+						if (target_node_inst->planned_peers.size() >= degree) break;
 						if (connect_node_name == target_node_name) continue; // connect_node == self
 						if (check_duplicate_peer((*target_node_inst), connect_node_name)) continue; // connection already exists
 						
 						auto &connect_node = node_container.at(connect_node_name);
-						target_node_inst->peers.push_back(connect_node);
+						target_node_inst->planned_peers.emplace(connect_node->name, connect_node);
 						LOG(INFO) << "network topology average degree process: " << target_node_inst->name << " -> " << connect_node->name;
 					}
 				}
@@ -418,7 +354,7 @@ int main(int argc, char *argv[])
 				else
 				{
 					auto &connect_node = node_container.at(rhs_node_str);
-					lhs_node_iter->second->peers.push_back(connect_node);
+					lhs_node_iter->second->planned_peers.emplace(connect_node->name, connect_node);
 				}
 			}
 			else if (bilateral_loc != std::string::npos)
@@ -438,7 +374,7 @@ int main(int argc, char *argv[])
 				else
 				{
 					auto &rhs_connected_node = node_container.at(rhs_node_str);
-					lhs_node_iter->second->peers.push_back(rhs_connected_node);
+					lhs_node_iter->second->planned_peers.emplace(rhs_connected_node->name, rhs_connected_node);
 				}
 				
 				if (check_duplicate_peer(*(rhs_node_iter->second), lhs_node_str))// connection already exists
@@ -448,7 +384,7 @@ int main(int argc, char *argv[])
 				else
 				{
 					auto &lhs_connected_node = node_container.at(lhs_node_str);
-					rhs_node_iter->second->peers.push_back(lhs_connected_node);
+					rhs_node_iter->second->planned_peers.emplace(lhs_connected_node->name, lhs_connected_node);
 				}
 			}
 			else
@@ -509,35 +445,58 @@ int main(int argc, char *argv[])
 	}
 	
 	//services
-	std::unordered_map<std::string, std::shared_ptr<record_service<model_datatype>>> record_services;
-	record_services.emplace("accuracy", new accuracy_record<model_datatype>());
-	record_services.emplace("weights", new model_weights_record<model_datatype>());
+	std::unordered_map<std::string, std::shared_ptr<service<model_datatype>>> services;
+	services.emplace("accuracy", new accuracy_record<model_datatype>());
+	services.emplace("weights_diff", new model_weights_record<model_datatype>());
+	services.emplace("force_broadcast_average", new force_broadcast_model<model_datatype>());
+	services.emplace("peer_control_service", new peer_control_service<model_datatype>());
+	auto services_json = config_json["services"];
+	LOG_IF(FATAL, services_json.is_null()) << "services are not defined in configuration file";
 	
 	//accuracy service
 	{
-		auto service_iter = record_services.find("accuracy");
+		auto service_iter = services.find("accuracy");
+		
 		std::static_pointer_cast<accuracy_record<model_datatype>>(service_iter->second)->ml_solver_proto = ml_solver_proto;
-		std::static_pointer_cast<accuracy_record<model_datatype>>(service_iter->second)->ml_test_interval_tick = ml_test_interval_tick;
 		std::static_pointer_cast<accuracy_record<model_datatype>>(service_iter->second)->test_dataset = &test_dataset;
 		std::static_pointer_cast<accuracy_record<model_datatype>>(service_iter->second)->ml_test_batch_size = ml_test_batch_size;
-		std::static_pointer_cast<accuracy_record<model_datatype>>(service_iter->second)->node_vector_container = &node_vector_container;
-		service_iter->second->init_service(output_path, node_container);
+		
+		service_iter->second->apply_config(services_json["accuracy"]);
+		service_iter->second->init_service(output_path, node_container, node_vector_container);
 	}
 	
 	//weights record
 	{
-		auto service_iter = record_services.find("weights");
-		std::static_pointer_cast<model_weights_record<model_datatype>>(service_iter->second)->node_vector_container = &node_vector_container;
-		std::static_pointer_cast<model_weights_record<model_datatype>>(service_iter->second)->ml_model_weight_diff_record_interval_tick = ml_model_weight_diff_record_interval_tick;
-		service_iter->second->init_service(output_path, node_container);
+		auto service_iter = services.find("weights_diff");
+		
+		service_iter->second->apply_config(services_json["weights_diff"]);
+		service_iter->second->init_service(output_path, node_container, node_vector_container);
+	}
+	
+	//force_broadcast
+	{
+		auto service_iter = services.find("force_broadcast_average");
+		
+		service_iter->second->apply_config(services_json["force_broadcast_average"]);
+		service_iter->second->init_service(output_path, node_container, node_vector_container);
+	}
+	
+	//peer_control_service
+	{
+		auto service_iter = services.find("peer_control_service");
+		
+		std::static_pointer_cast<peer_control_service<model_datatype>>(service_iter->second)->ml_solver_proto = ml_solver_proto;
+		std::static_pointer_cast<peer_control_service<model_datatype>>(service_iter->second)->test_dataset = &test_dataset;
+		std::static_pointer_cast<peer_control_service<model_datatype>>(service_iter->second)->ml_test_batch_size = ml_test_batch_size;
+		std::static_pointer_cast<peer_control_service<model_datatype>>(service_iter->second)->ml_dataset_all_possible_labels = &ml_dataset_all_possible_labels;
+		
+		service_iter->second->apply_config(services_json["peer_control_service"]);
+		service_iter->second->init_service(output_path, node_container, node_vector_container);
 	}
 	
 	////////////  BEGIN SIMULATION  ////////////
 	{
-
 		auto last_time_point = std::chrono::system_clock::now();
-		
-
 		
 		int tick = 0;
 		while (tick <= ml_max_tick)
@@ -603,12 +562,11 @@ int main(int argc, char *argv[])
 					}
 					
 					//add ML network to FedAvg buffer
-					for (auto updating_node : single_node->peers)
+					for (auto [updating_node_name, updating_node] : single_node->peers)
 					{
 						std::lock_guard guard(updating_node->parameter_buffer_lock);
 						updating_node->parameter_buffer.emplace_back(single_node->name, type, parameter_output);
 					}
-					
 				}
 			}, node_vector_container.size(), node_vector_container.data());
 			
@@ -657,6 +615,8 @@ int main(int argc, char *argv[])
 						model.accuracy = solver_for_testing[thread_index].evaluation(test_data, test_label);
 					}, received_models.size(), received_models.data());
 					self_accuracy_thread.join();
+					single_node->last_measured_accuracy = self_accuracy;
+					single_node->last_measured_tick = tick;
 					std::string log_msg = (boost::format("tick: %1%, node: %2%, accuracy: %3%") % tick % single_node->name % self_accuracy).str();
 					std::cout << log_msg << std::endl;
 					LOG(INFO) << log_msg;
@@ -678,9 +638,9 @@ int main(int argc, char *argv[])
 			}, node_vector_container.size(), node_vector_container.data());
 			
 			//services
-			for (auto& [name, service_instance]: record_services)
+			for (auto& [name, service_instance]: services)
 			{
-				service_instance->process_per_tick(tick, node_container);
+				service_instance->process_per_tick(tick);
 			}
 			
 			tick++;
@@ -688,7 +648,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	
-	for (auto& [name, service_instance]: record_services)
+	for (auto& [name, service_instance]: services)
 	{
 		service_instance->destruction_service();
 	}

@@ -51,6 +51,8 @@ int main(int argc, char* argv[])
 	
 	for (auto& node : nodes_json)
 	{
+		if (node["node_type"] != "normal") continue;
+		
 		node["dataset_mode"] = "non-iid";
 		auto& dis_json = node["non_iid_distribution"];
 		for (auto single_label : all_labels)
