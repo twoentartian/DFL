@@ -274,8 +274,8 @@ namespace network::simple
 			}
 			
 			//set socket option
-			_socket->set_option(boost::asio::socket_base::receive_buffer_size(BUFFER_SIZE));
-			_socket->set_option(boost::asio::socket_base::send_buffer_size(BUFFER_SIZE));
+			//_socket->set_option(boost::asio::socket_base::receive_buffer_size(BUFFER_SIZE));
+			//_socket->set_option(boost::asio::socket_base::send_buffer_size(BUFFER_SIZE));
 			//_socket->set_option(boost::asio::ip::tcp::no_delay(true));
 			
 			do_read();

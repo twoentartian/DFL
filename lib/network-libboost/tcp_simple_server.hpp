@@ -29,8 +29,8 @@ namespace network::simple
 			_buffer = new char[BUFFER_SIZE];
 			_connected = true;
 			_socket = socket_ptr;
-			_socket->set_option(boost::asio::socket_base::receive_buffer_size(BUFFER_SIZE));
-			_socket->set_option(boost::asio::socket_base::send_buffer_size(BUFFER_SIZE));
+			//_socket->set_option(boost::asio::socket_base::receive_buffer_size(BUFFER_SIZE));
+			//_socket->set_option(boost::asio::socket_base::send_buffer_size(BUFFER_SIZE));
 			//_socket->set_option(boost::asio::ip::tcp::no_delay(true));
 			
 			_ip = _socket->remote_endpoint().address().to_string();
