@@ -106,7 +106,7 @@ namespace network
 				                                 //process the packet
 				                                 if (_callback)
 				                                 {
-					                                 auto reply = _callback(data, length);
+					                                 auto reply = _callback(data, length, session_receive->ip());
 					                                 try
 					                                 {
 					                                 	
@@ -142,6 +142,11 @@ namespace network
 		void set_receive_callback(receive_callback callback = nullptr) override
 		{
 			_callback = callback;
+		}
+		
+		uint16_t read_port() const override
+		{
+			return _server.read_port();
 		}
 	
 	private:

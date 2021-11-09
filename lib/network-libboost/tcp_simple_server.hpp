@@ -332,8 +332,12 @@ namespace network::simple
 			return _sessionMap;
 		}
 	
+		uint16_t read_port() const
+		{
+			return _end_point->port();
+		}
+		
 	protected:
-		RWLock _lock_acceptor_thread_container;
 		std::vector<std::thread> _acceptor_thread_container;
 		std::shared_ptr<boost::asio::io_service> _io_service;
 		std::shared_ptr<boost::asio::ip::tcp::acceptor> _acceptor;

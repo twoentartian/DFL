@@ -38,7 +38,7 @@ namespace network
 		};
 		
 		using send_callback = std::function<void(send_packet_status, const char* data, int length)>;
-		using receive_callback = std::function<std::string(const char* data, int length)>;
+		using receive_callback = std::function<std::string(const char* data, size_t length, std::string ip)>;
 		
 		virtual void send(const std::string &ip, uint16_t port, address_type type, const char* data, size_t size, send_callback callback) = 0;
 		
@@ -54,5 +54,7 @@ namespace network
 		virtual void stop_service() = 0;
 		
 		virtual void set_receive_callback(receive_callback callback) = 0;
+		
+		virtual uint16_t read_port() const = 0;
 	};
 }
