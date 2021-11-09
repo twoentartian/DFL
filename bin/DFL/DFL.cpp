@@ -426,10 +426,10 @@ int main(int argc, char **argv)
 	main_transaction_tran_rece.reset(new transaction_tran_rece(main_transaction_storage_for_block));
 	main_transaction_tran_rece->start_listen(config.get_json()["network"]["port"]);
 	auto peers = config.get_json()["network"]["peers"];
-	global_var::peer_count = peers.size();
+	main_transaction_tran_rece->get_maximum_peer() = config.get_json()["network"]["maximum_peer"];
 	for (auto &peer : peers)
 	{
-		main_transaction_tran_rece->add_peer(peer["address"], peer["port"]);
+		main_transaction_tran_rece->add_preferred_peer(peer.get<std::string>());
 	}
 	main_transaction_tran_rece->set_receive_transaction_callback(receive_transaction);
 	

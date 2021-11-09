@@ -13,6 +13,8 @@
 #include "std_output.hpp"
 #include "block.hpp"
 #include "transaction_storage_for_block.hpp"
+#include "introducer_data.hpp"
+#include "dfl_util.hpp"
 
 class transaction_tran_rece
 {
@@ -25,6 +27,7 @@ public:
 	transaction_tran_rece(std::shared_ptr<transaction_storage_for_block> main_transaction_storage_for_block)
 	{
 		_main_transaction_storage_for_block = main_transaction_storage_for_block;
+		_use_preferred_peer_only = false;
 	}
 
 	void start_listen(uint16_t listen_port)
@@ -152,7 +155,7 @@ public:
 		const std::string& trans_hash = trans.hash_sha256;
 		
 		std::string trans_binary_str = serialize_wrap<boost::archive::binary_oarchive>(trans).str();
-		std::vector<peer_enpoint> peers_copy;
+		std::unordered_map<size_t, peer_endpoint> peers_copy;
 		{
 			std::lock_guard guard(_peers_lock);
 			peers_copy = _peers;
@@ -161,12 +164,10 @@ public:
 		for (auto&& peer: peers_copy)
 		{
 			using namespace network;
-			_p2p.send(peer.address, peer.port, i_p2p_node_with_header::ipv4, command::transaction, trans_binary_str.data(), trans_binary_str.length(), [trans_hash, peer](i_p2p_node_with_header::send_packet_status status, header::COMMAND_TYPE received_command, const char* data, int length){
+			_p2p.send(peer.second.address, peer.second.port, i_p2p_node_with_header::ipv4, command::transaction, trans_binary_str.data(), trans_binary_str.length(), [trans_hash, peer](i_p2p_node_with_header::send_packet_status status, header::COMMAND_TYPE received_command, const char* data, int length){
 				std::stringstream ss;
-				ss << "[transaction trans] send transaction with hash " << trans_hash << " to " << peer.to_string() << ", send status: " << i_p2p_node_with_header::send_packet_status_message[status];
-				auto ss_str = ss.str();
-				LOG(INFO) << ss_str;
-				std_cout::println(ss_str);
+				ss << "[transaction trans] send transaction with hash " << trans_hash << " to " << peer.second.to_string() << ", send status: " << i_p2p_node_with_header::send_packet_status_message[status];
+				dfl_util::print_info_to_log_stdcout(ss);
 			});
 		}
 	}
@@ -176,7 +177,7 @@ public:
 		std::vector<block_confirmation> output_confirmations;
 		
 		std::string block_binary_str = serialize_wrap<boost::archive::binary_oarchive>(blk).str();
-		std::vector<peer_enpoint> peers_copy;
+		std::unordered_map<size_t, peer_endpoint> peers_copy;
 		{
 			std::lock_guard guard(_peers_lock);
 			peers_copy = _peers;
@@ -185,37 +186,49 @@ public:
 		for (auto&& peer: peers_copy)
 		{
 			using namespace network;
-			_p2p.send(peer.address, peer.port, i_p2p_node_with_header::ipv4, command::block, block_binary_str.data(), block_binary_str.length(), [&peer, &blk, &output_confirmations](i_p2p_node_with_header::send_packet_status status, header::COMMAND_TYPE command_received, const char* data, int length){
+			
+			//skip not normal peer.
+			if (peer.second.type != peer_endpoint::peer_type_normal_node) continue;
+			
+			_p2p.send(peer.second.address, peer.second.port, i_p2p_node_with_header::ipv4, command::block, block_binary_str.data(), block_binary_str.length(), [&peer, &blk, &output_confirmations](i_p2p_node_with_header::send_packet_status status, header::COMMAND_TYPE command_received, const char* data, int length){
 				std::string received_data(data, length);
 				if (command_received == command::acknowledge)
 				{
 					std::stringstream ss;
-					ss << "[transaction trans] send block " << blk.block_content_hash << " to " << peer.to_string();
-					auto ss_str = ss.str();
-					LOG(INFO) << ss_str;
-					std_cout::println(ss_str);
+					ss << "[transaction trans] send block " << blk.block_content_hash << " to " << peer.second.to_string();
+					dfl_util::print_info_to_log_stdcout(ss);
 					//no confirmation provide, do nothing
 				}
 				else if (command_received == command::block_confirmation)
 				{
 					//TODO:check confirmation
-					std::vector<block_confirmation> confirmations = deserialize_wrap<boost::archive::binary_iarchive, std::vector<block_confirmation>>(received_data);
+					std::vector<block_confirmation> confirmations;
+					try
+					{
+						confirmations = deserialize_wrap<boost::archive::binary_iarchive, std::vector<block_confirmation>>(received_data);
+					}
+					catch (...)
+					{
+						LOG(WARNING) << "[transaction trans] error in parsing block confirmation";
+						return;
+					}
+					
 					for (auto& confirmation: confirmations)
 					{
 						output_confirmations.push_back(confirmation);
 					}
 					
 					std::stringstream ss;
-					ss << "[transaction trans] send block " << blk.block_content_hash << " to " << peer.to_string() << " and receive " << confirmations.size() << " block confirmation";
-					auto ss_str = ss.str();
-					LOG(INFO) << ss_str;
-					std_cout::println(ss_str);
+					ss << "[transaction trans] send block " << blk.block_content_hash << " to " << peer.second.to_string() << " and receive " << confirmations.size() << " block confirmation";
+					dfl_util::print_info_to_log_stdcout(ss);
 				}
 			});
 		}
 		
 		return output_confirmations;
 	}
+	
+	
 	
 	void set_receive_transaction_callback(receive_transaction_callback callback)
 	{
@@ -232,21 +245,190 @@ public:
 		_receive_block_confirmation_callbacks.push_back(callback);
 	}
 
-	void add_peer(const std::string& address, uint16_t port)
+	std::tuple<bool, std::string> force_add_peer(const std::string& name, const std::string& public_key, const std::string& address, uint16_t port)
 	{
-		peer_enpoint temp(address, port);
+		if (!dfl_util::verify_address_public_key(name, public_key)) return {false, "wrong public key and name (address) pair"};
+		
+		peer_endpoint temp(name, public_key, address, port, peer_endpoint::peer_type_normal_node);
 		{
 			std::lock_guard guard(_peers_lock);
-			_peers.push_back(temp);
+			_peers.emplace(_peers.size(), temp);
 		}
 	}
 	
+	std::tuple<bool, std::string> add_preferred_peer(const std::string& name)
+	{
+		if (_preferred_peers.contains(name))
+		{
+			return {false, "peer name already exist"};
+		}
+		else
+		{
+			_preferred_peers.insert(name);
+			return {true, ""};
+		}
+	}
+	
+	std::tuple<bool, std::string> add_introducer(const std::string& name, const std::string& address, const std::string& public_key, uint16_t port)
+	{
+		
+		
+		peer_endpoint temp(name, public_key, address, port, peer_endpoint::peer_type_introducer);
+		{
+			std::lock_guard guard(_peers_lock);
+			_peers.emplace(_peers.size(), temp);
+		}
+	}
+	
+	[[nodiscard]] std::unordered_map<size_t, peer_endpoint> get_peers()
+	{
+		return _peers;
+	}
+	
+	std::vector<std::tuple<size_t, peer_endpoint>> remove_peers(int remove_count, std::vector<size_t> remove_list = {})
+	{
+		std::vector<std::tuple<size_t, peer_endpoint>> output;
+		int remove_list_index = 0;
+		while (remove_count > 0)
+		{
+			auto index_to_remove = remove_list[remove_list_index];
+			if (_peers.find(index_to_remove) != _peers.end())
+			{
+				auto remove_item = std::make_tuple(index_to_remove, _peers[index_to_remove]);
+				if (_peers.erase(index_to_remove) == 1)
+				{
+					output.push_back(remove_item);
+					remove_count--;
+				}
+			}
+			else
+			{
+				if (_peers.size() == 0)
+					return output;
+				index_to_remove = _peers.size() - 1;
+				auto remove_item = std::make_tuple(index_to_remove, _peers[index_to_remove]);
+				if (_peers.erase(index_to_remove) == 1)
+				{
+					output.push_back(remove_item);
+					remove_count--;
+				}
+			}
+			remove_list_index++;
+		}
+	}
+	
+	std::tuple<bool, std::string> try_to_add_peer(int desired_peer_count = -1)
+	{
+		if (desired_peer_count == -1) desired_peer_count = _maximum_peer;
+		if (desired_peer_count < 0) return {false, "invalid peer count"};
+		
+		std::unordered_map<size_t, peer_endpoint> peers_copy;
+		{
+			std::lock_guard guard(_peers_lock);
+			peers_copy = _peers;
+		}
+		
+		//build request peer message
+		request_peer_info_data message;
+		message.requester_address = global_var::address.getTextStr_lowercase();
+		message.peers_info = {};
+		message.generator_address = global_var::address.getTextStr_lowercase();
+		message.node_pubkey = global_var::public_key.getTextStr_lowercase();
+		
+		//hash and signature
+		byte_buffer buffer;
+		message.to_byte_buffer(buffer);
+		crypto::hex_data hash = crypto::sha256::digest_s(buffer.data(), buffer.size());
+		message.hash = hash.getTextStr_lowercase();
+		crypto::hex_data sig = crypto::ecdsa_openssl::sign(hash, global_var::private_key);
+		message.signature = sig.getTextStr_lowercase();
+		
+		//serialize
+		std::string message_str = serialize_wrap<boost::archive::binary_oarchive>(message).str();
+		
+		for (auto&& peer: peers_copy)
+		{
+			if (peer.second.type != peer_endpoint::peer_type_introducer) continue;
+			using namespace network;
+			
+			//send available peer list request
+			_p2p.send(peer.second.address, peer.second.port, i_p2p_node_with_header::ipv4, command::request_peer_info, message_str.data(), message_str.length(), [this](i_p2p_node_with_header::send_packet_status status, header::COMMAND_TYPE command_received, const char* data, int length) {
+				if (status != i_p2p_node_with_header::send_packet_success)
+				{
+					LOG(WARNING) << "[transaction trans] request peer list does not success, status:" << i_p2p_node_with_header::send_packet_status_message[status];
+					return;
+				}
+				
+				if (command_received == command::reply_peer_info)
+				{
+					std::string received_data(data, length);
+					request_peer_info_data received_peers;
+					try
+					{
+						received_peers = deserialize_wrap<boost::archive::binary_iarchive, request_peer_info_data>(received_data);
+					}
+					catch (...)
+					{
+						LOG(WARNING) << "[transaction trans] WARNING, error in parsing the peers information";
+						return;
+					}
+					
+					//check name
+					if (crypto::hex_data(received_peers.requester_address) != global_var::address)
+					{
+						LOG(WARNING) << "[transaction trans] WARNING, the returned peers information has a wrong address";
+						return;
+					}
+					
+					//register on the other nodes as peer
+					register_as_peer_data message;
+					message.node_pubkey = global_var::public_key.getTextStr_lowercase();
+					message.address = global_var::address.getTextStr_lowercase();
+					std::string message_str = serialize_wrap<boost::archive::binary_oarchive>(message).str();
+					for (auto& single_peer_info : received_peers.peers_info)
+					{
+						//send register as peer request
+						_p2p.send(single_peer_info.address, single_peer_info.port, i_p2p_node_with_header::ipv4, command::register_as_peer, message_str.data(), message_str.length(), [](i_p2p_node_with_header::send_packet_status status, header::COMMAND_TYPE command_received, const char* data, int length) {
+							if (status != i_p2p_node_with_header::send_packet_success)
+							{
+								LOG(WARNING) << "[transaction trans] register as peer does not success, status: " << i_p2p_node_with_header::send_packet_status_message[status];
+								return;
+							}
+							
+							if (command_received == command::acknowledge)
+							{
+								//do nothing because we know they have put us on the peer list
+							}
+							else
+							{
+								LOG(WARNING) << "[transaction trans] WARNING, register as peer but does not return acknowledge, return command: " << command_received;
+								return;
+							}
+						});
+					}
+				}
+				else
+				{
+					LOG(WARNING) << "[transaction trans] WARNING, request peer info but returned a wrong command: " << command_received;
+				}
+			});
+		}
+	}
+	
+	
+	GENERATE_GET(_maximum_peer, get_maximum_peer);
+	GENERATE_GET(_use_preferred_peer_only, get_use_preferred_peer_only);
+	
 private:
+	size_t _maximum_peer;
+	bool _use_preferred_peer_only;
+	std::unordered_set<std::string> _preferred_peers;
+	
 	std::vector<receive_transaction_callback> _receive_transaction_callbacks;
 	std::vector<receive_block_callback> _receive_block_callbacks;
 	std::vector<receive_block_confirmation_callback> _receive_block_confirmation_callbacks;
 	network::p2p_with_header _p2p;
-	std::vector<peer_enpoint> _peers;
+	std::unordered_map<size_t, peer_endpoint> _peers;
 	std::mutex _peers_lock;
 	std::shared_ptr<transaction_storage_for_block> _main_transaction_storage_for_block;
 };

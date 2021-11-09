@@ -25,10 +25,11 @@ configuration_file::json get_default_configuration()
 	output["data_storage_trigger_training_size"] = 64; // must be equal to the batch size of the model
 	
 	output["network"]["port"] = 8000;
-	peer_enpoint item0 = {"127.0.0.1", 8000};
-	peer_enpoint item1 = {"127.0.0.1", 8001};
-	std::vector<configuration_file::json> peers = {item0.to_json(), item1.to_json()};
+	std::string item0 = {"name"};
+	std::string item1 = {"name"};
+	std::vector<configuration_file::json> peers = {item0, item1};
 	output["network"]["peers"] = peers;
+	output["network"]["maximum_peer"] = 10;
 	
 	output["transaction_count_per_model_update"] = 10;
 	output["transaction_db_path"] = "./transaction_db";

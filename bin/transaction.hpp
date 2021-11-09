@@ -15,6 +15,7 @@
 
 #include "ml_layer.hpp"
 #include "node_info.hpp"
+#include "dfl_util.hpp"
 
 using TIME_STAMP_TYPE = uint64_t;
 class transaction_without_hash_sig : i_hashable, i_json_serialization
@@ -282,16 +283,11 @@ public:
 	bool verify_key() const
 	{
 		//check private key and public key
-		std::string data = util::get_random_str();
-		auto hash = crypto::md5::digest_s(data);
-		auto signature = crypto::ecdsa_openssl::sign(hash, _private_key);
-		bool pass = crypto::ecdsa_openssl::verify(signature, hash, _public_key);
-		if (!pass) return false;
+		if (!dfl_util::verify_private_public_key(_private_key, _public_key)) return false;
 		
 		//check node_name & pubkey
-		auto pubkey_hex = _public_key.getHexMemory();
-		auto sha256 = crypto::sha256::digest_s(pubkey_hex.data(), pubkey_hex.size());
-		if (sha256 != _address) return false;
+		if (!dfl_util::verify_address_public_key(_address, _public_key)) return false;
+		
 		return true;
 	}
 	

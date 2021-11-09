@@ -3,7 +3,7 @@
 //
 #pragma once
 #include <ml_layer.hpp>
-#include "tool/lz4.hpp"
+#include <lz4.hpp>
 #include "boost/variant.hpp"
 
 class data_medium
