@@ -3,6 +3,9 @@
 
 int main()
 {
+	std::string self_ip = network::local_address();
+	std::cout << self_ip << std::endl;
+	
 	network::udp::udp_socket udp0(1000);
 	network::udp::udp_socket udp1(1001);
 	

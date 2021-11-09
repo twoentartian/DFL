@@ -54,6 +54,8 @@ namespace network
 		virtual void stop_service() = 0;
 		
 		virtual void set_receive_callback(receive_callback callback) = 0;
+		
+		virtual uint16_t read_port() const = 0;
 	};
 	
 }
