@@ -93,7 +93,7 @@ namespace network
 			}
 		}
 		
-		void start_service(uint16_t port, int worker) override
+		void start_service(uint16_t arg_port, int worker) override
 		{
 			_server.SetAcceptHandler([this](const std::string &ip, uint16_t port, std::shared_ptr<simple::tcp_session> session)
 			                         {
@@ -127,8 +127,9 @@ namespace network
 					                               LOG(INFO) << "[p2p] server: session close";
 			                               });
 			
-			auto ret_code = _server.Start(port, worker);
-			CHECK_EQ(ret_code, Success) << "[p2p] error to start server at port: " << port << ", message: " << std::to_string(ret_code);
+			auto ret_code = _server.Start(arg_port, worker);
+			CHECK_EQ(ret_code, Success) << "[p2p] error to start server at port: " << arg_port << ", message: " << std::to_string(ret_code);
+			port = arg_port;
 		}
 		
 		void start_service(uint16_t port) override
@@ -145,13 +146,19 @@ namespace network
 		{
 			_callback = callback;
 		}
-	
+		
+		uint16_t read_port() const override
+		{
+			return port;
+		}
+		
 	private:
 		const bool _enable_log;
 		simple::tcp_server_with_header _server;
 		std::mutex _client_mutex;
 		bool _service_running;
 		receive_callback _callback;
+		uint16_t port;
 	};
 	
 }

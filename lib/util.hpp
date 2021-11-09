@@ -9,6 +9,10 @@ auto& get_name()                            \
 [[nodiscard]] const auto& get_name() const  \
 {return Var_name;}
 
+#define GENERATE_READ(Var_name, get_name)   \
+[[nodiscard]] const auto& get_name() const  \
+{return Var_name;}
+
 namespace util
 {
 	template <typename T>
