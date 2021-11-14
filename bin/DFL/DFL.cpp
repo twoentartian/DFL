@@ -54,7 +54,7 @@ void generate_block()
 	
 	LOG(INFO) << "generating block";
 	std_cout::println("[DFL] generating block");
-	auto cached_transactions_with_receipt = main_transaction_storage_for_block->dump_block_cache(std::ceil(float(global_var::peer_count)/2));
+	auto cached_transactions_with_receipt = main_transaction_storage_for_block->dump_block_cache(std::ceil(float(main_transaction_tran_rece->get_peers().size()) / 2));//we need to collect at least over 50% confirmations to generate a block
 	if (cached_transactions_with_receipt.empty())
 	{
 		std::stringstream ss;
@@ -423,7 +423,7 @@ int main(int argc, char **argv)
 	main_dataset_storage->start_network_service(port, concurrency);
 	
 	//start transaction_tran_rece
-	main_transaction_tran_rece.reset(new transaction_tran_rece(main_transaction_storage_for_block));
+	main_transaction_tran_rece.reset(new transaction_tran_rece(global_var::public_key, global_var::private_key, global_var::address, main_transaction_storage_for_block));
 	main_transaction_tran_rece->start_listen(config.get_json()["network"]["port"]);
 	auto peers = config.get_json()["network"]["peers"];
 	main_transaction_tran_rece->get_maximum_peer() = config.get_json()["network"]["maximum_peer"];

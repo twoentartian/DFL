@@ -3,6 +3,7 @@
 #include <string>
 #include <utility>
 
+#include <configure_file.hpp>
 #include <hash_interface.hpp>
 #include <boost_serialization_wrapper.hpp>
 
@@ -16,13 +17,17 @@ public:
 		peer_type_introducer
 	};
 	
-	std::string name;
-	std::string address;
+	std::string name; //hash(public_key)
+	std::string address; //network address
 	std::string public_key;
 	uint16_t port;
 	peer_type type;
 	
-	peer_endpoint() = default;
+	peer_endpoint() : port(0), type(peer_type_unknown)
+	{
+
+	}
+	
 	peer_endpoint(std::string name, std::string public_key, std::string address, uint16_t port, peer_type type) : name(std::move(name)), address(std::move(address)), public_key(std::move(public_key)), port(port), type(type)
 	{
 	
@@ -43,7 +48,7 @@ public:
 		return output;
 	}
 	
-	void to_byte_buffer(byte_buffer& target) const
+	void to_byte_buffer(byte_buffer& target) const override
 	{
 		target.add(name);
 		target.add(address);
@@ -75,7 +80,7 @@ public:
 	std::string hash;
 	std::string signature;
 	
-	void to_byte_buffer(byte_buffer& target) const
+	void to_byte_buffer(byte_buffer& target) const override
 	{
 		target.add(requester_address);
 		for (auto& single_peer : peers_info)
@@ -106,14 +111,16 @@ class register_as_peer_data : i_hashable
 public:
 	std::string address;
 	std::string node_pubkey;
+	uint16_t port;
 	
 	std::string hash;
 	std::string signature;
 	
-	void to_byte_buffer(byte_buffer& target) const
+	void to_byte_buffer(byte_buffer& target) const override
 	{
 		target.add(address);
 		target.add(node_pubkey);
+		target.add(port);
 	}
 	
 private:
@@ -123,6 +130,7 @@ private:
 	{
 		ar & address;
 		ar & node_pubkey;
+		ar & port;
 		
 		ar & hash;
 		ar & signature;

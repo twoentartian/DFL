@@ -121,7 +121,7 @@ public:
 	void start_network_service(uint16_t port, size_t worker)
 	{
 		_p2p_server.start_service(port, worker);
-		_p2p_server.set_receive_callback([this](const char* data, int size) -> std::string {
+		_p2p_server.set_receive_callback([this](const char* data, int size, std::string ip) -> std::string {
 			return network_receive_callback(data, size);
 		});
 		
