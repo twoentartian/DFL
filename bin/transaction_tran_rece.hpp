@@ -6,8 +6,10 @@
 
 #include <boost_serialization_wrapper.hpp>
 
+#include <time_util.hpp>
+
 #include "transaction.hpp"
-#include "global_var.hpp"
+#include "global_types.hpp"
 #include "command_allocation.hpp"
 #include "std_output.hpp"
 #include "block.hpp"
@@ -67,6 +69,14 @@ public:
 					LOG(WARNING) << "cannot parse packet data";
 					return {command::acknowledge_but_not_accepted, "cannot parse packet data"};
 				}
+				
+				//update _active_peer
+				auto peer_iter = _active_peers.find(trans.content.creator.node_address);
+				if (peer_iter != _active_peers.end())
+				{
+					peer_iter->second = time_util::get_current_utc_time();
+				}
+				
 				std::thread temp_thread([this, trans](){
 					for (auto&& cb : _receive_transaction_callbacks)
 					{
@@ -336,10 +346,10 @@ public:
 			_peers.emplace(name, temp);
 		}
 		
-		if (!_registerOnIntroducerThread)
+		if (!_registerAndKeeperThread)
 		{
-			_registerOnIntroducerThread.reset(new std::thread([&](){
-				while (true)
+			_registerAndKeeperThread.reset(new std::thread([this](){
+				while (_running)
 				{
 					if (!_listening) continue; //server is not allocated a port yet
 					
@@ -350,38 +360,57 @@ public:
 					}
 					
 					//send register request
-					register_as_peer_data message;
-					message.node_pubkey = _public_key.getTextStr_lowercase();
-					message.address = _address.getTextStr_lowercase();
-					message.port = _p2p.read_port();
-					auto hash_hex = crypto::sha256_digest(message);
-					message.hash = hash_hex.getTextStr_lowercase();
-					message.signature = crypto::ecdsa_openssl::sign(hash_hex, _private_key).getTextStr_lowercase();
-					
-					std::string message_str = serialize_wrap<boost::archive::binary_oarchive>(message).str();
-					
-					using network::i_p2p_node_with_header;
-					for (auto& [name, peer] : peers_copy)
 					{
-						if (peer.type != peer_endpoint::peer_type_introducer) continue;
+						register_as_peer_data message;
+						message.node_pubkey = _public_key.getTextStr_lowercase();
+						message.address = _address.getTextStr_lowercase();
+						message.port = _p2p.read_port();
+						auto hash_hex = crypto::sha256_digest(message);
+						message.hash = hash_hex.getTextStr_lowercase();
+						message.signature = crypto::ecdsa_openssl::sign(hash_hex, _private_key).getTextStr_lowercase();
 						
-						_p2p.send(peer.address, peer.port, i_p2p_node_with_header::ipv4, command::register_as_peer, message_str.data(), message_str.length(), [this](i_p2p_node_with_header::send_packet_status status, network::header::COMMAND_TYPE command_received, const char* data, int length) {
-							if (status != i_p2p_node_with_header::send_packet_success)
-							{
-								LOG(WARNING) << "[transaction trans] register as peer does not success, status: " << i_p2p_node_with_header::send_packet_status_message[status];
-								return;
-							}
+						std::string message_str = serialize_wrap<boost::archive::binary_oarchive>(message).str();
+						
+						using network::i_p2p_node_with_header;
+						for (auto& [name, peer] : peers_copy)
+						{
+							if (peer.type != peer_endpoint::peer_type_introducer) continue;
 							
-							if (command_received == command::acknowledge)
+							_p2p.send(peer.address, peer.port, i_p2p_node_with_header::ipv4, command::register_as_peer, message_str.data(), message_str.length(), [this](i_p2p_node_with_header::send_packet_status status, network::header::COMMAND_TYPE command_received, const char* data, int length) {
+								if (status != i_p2p_node_with_header::send_packet_success)
+								{
+									LOG(WARNING) << "[transaction trans] register as peer does not success, status: " << i_p2p_node_with_header::send_packet_status_message[status];
+									return;
+								}
+								
+								if (command_received == command::acknowledge)
+								{
+									//do nothing because we know they have put us on the peer list
+								}
+								else
+								{
+									LOG(WARNING) << "[transaction trans] WARNING, register as peer but does not return acknowledge, return command: " << command_received << "-" << std::string(data, length);
+									return;
+								}
+							});
+						}
+					}
+					
+					//update the active peer list
+					{
+						std::vector<std::string> removal_list;
+						time_t now = time_util::get_current_utc_time();
+						for (auto& [peer_name, last_active_time]: _active_peers)
+						{
+							if (now - last_active_time > _inactive_time_seconds)
 							{
-								//do nothing because we know they have put us on the peer list
+								removal_list.push_back(peer_name);
 							}
-							else
-							{
-								LOG(WARNING) << "[transaction trans] WARNING, register as peer but does not return acknowledge, return command: " << command_received << "-" << std::string(data, length);
-								return;
-							}
-						});
+						}
+						for (auto& removal_peer : removal_list)
+						{
+							_active_peers.erase(removal_peer);
+						}
 					}
 					
 					bool exit = false;
@@ -521,7 +550,7 @@ public:
 						}
 						
 						//send register as peer request
-						_p2p.send(single_peer_info.address, single_peer_info.port, i_p2p_node_with_header::ipv4, command::register_as_peer, message_str.data(), message_str.length(), [](i_p2p_node_with_header::send_packet_status status, header::COMMAND_TYPE command_received, const char* data, int length) {
+						_p2p.send(single_peer_info.address, single_peer_info.port, i_p2p_node_with_header::ipv4, command::register_as_peer, message_str.data(), message_str.length(), [this, single_peer_info](i_p2p_node_with_header::send_packet_status status, header::COMMAND_TYPE command_received, const char* data, int length) {
 							if (status != i_p2p_node_with_header::send_packet_success)
 							{
 								LOG(WARNING) << "[transaction trans] register as peer does not success, status: " << i_p2p_node_with_header::send_packet_status_message[status];
@@ -530,7 +559,8 @@ public:
 							
 							if (command_received == command::acknowledge)
 							{
-								//do nothing because we know they have put us on the peer list
+								//add the peer to the active list
+								_active_peers[single_peer_info.name] = time_util::get_current_utc_time();
 							}
 							else
 							{
@@ -565,15 +595,15 @@ public:
 	{
 		stop_listening();
 		_running = false;
-		if (_registerOnIntroducerThread)
+		if (_registerAndKeeperThread)
 		{
-			_registerOnIntroducerThread->join();
+			_registerAndKeeperThread->join();
 		}
 	}
 	
 	GENERATE_GET(_maximum_peer, get_maximum_peer);
 	GENERATE_GET(_use_preferred_peer_only, get_use_preferred_peer_only);
-	
+	GENERATE_GET(_inactive_time_seconds, get_inactive_time);
 private:
 	crypto::hex_data _address;
 	crypto::hex_data _public_key;
@@ -591,7 +621,10 @@ private:
 	std::mutex _peers_lock;
 	std::shared_ptr<transaction_storage_for_block> _main_transaction_storage_for_block;
 	
-	std::shared_ptr<std::thread> _registerOnIntroducerThread;
+	std::unordered_map<std::string, uint64_t> _active_peers;
+	uint64_t _inactive_time_seconds;
+	
+	std::shared_ptr<std::thread> _registerAndKeeperThread;
 	bool _running;
 	bool _listening;
 };

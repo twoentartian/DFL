@@ -81,10 +81,6 @@ public:
 					                          LOG(WARNING) << "cannot add peer: " << msg;
 					                          return {command::acknowledge_but_not_accepted, "cannot add peer: " + msg};
 				                          }
-				                          
-				                          std::stringstream info_ss;
-				                          info_ss << "add peer " << register_request.address << " with ip endpoint  " << ip <<":"<< register_request.port;
-				                          dfl_util::print_info_to_log_stdcout(info_ss);
 				
 				                          return {command::acknowledge, ""};
 			                          }
@@ -171,7 +167,15 @@ public:
 	//name: hash{public key}, address: network address.
 	std::tuple<bool, std::string> add_peer(const std::string &name, const std::string &public_key, const std::string &address, uint16_t port)
 	{
-		if (!dfl_util::verify_address_public_key(name, public_key)) return {false, "wrong public key and name (address) pair"};
+		auto iter = _peers.find(name);
+		if (iter != _peers.end())
+		{
+			bool skip = true;
+			if (public_key != iter->second.public_key) skip = false;
+			if (address != iter->second.address) skip = false;
+			if (port != iter->second.port) skip = false;
+			if (skip) return {true, "already exist"};
+		}
 		
 		peer_endpoint temp(name, public_key, address, port, peer_endpoint::peer_type_normal_node);
 		{

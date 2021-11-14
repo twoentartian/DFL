@@ -3,7 +3,7 @@
 #include <glog/logging.h>
 
 #include <configure_file.hpp>
-#include <default_configuration.hpp>
+
 #include <crypto.hpp>
 #include <util.hpp>
 #include <time_util.hpp>
@@ -26,6 +26,7 @@
 #include "../transaction_storage_for_block.hpp"
 #include "../block_manager.hpp"
 #include "../reputation_dll_test.hpp"
+#include "default_configuration.hpp"
 
 constexpr char LOG_PATH[] = "./log/";
 using model_datatype = float;
@@ -423,15 +424,29 @@ int main(int argc, char **argv)
 	main_dataset_storage->start_network_service(port, concurrency);
 	
 	//start transaction_tran_rece
-	main_transaction_tran_rece.reset(new transaction_tran_rece(global_var::public_key, global_var::private_key, global_var::address, main_transaction_storage_for_block));
-	main_transaction_tran_rece->start_listen(config.get_json()["network"]["port"]);
-	auto peers = config.get_json()["network"]["peers"];
-	main_transaction_tran_rece->get_maximum_peer() = config.get_json()["network"]["maximum_peer"];
-	for (auto &peer : peers)
 	{
-		main_transaction_tran_rece->add_preferred_peer(peer.get<std::string>());
+		main_transaction_tran_rece.reset(new transaction_tran_rece(global_var::public_key, global_var::private_key, global_var::address,
+															 main_transaction_storage_for_block, config.get_json()["network"]["use_preferred_peers_only"]));
+		main_transaction_tran_rece->start_listen(config.get_json()["network"]["port"]);
+		auto preferred_peers = config.get_json()["network"]["peers"];
+		main_transaction_tran_rece->get_maximum_peer() = config.get_json()["network"]["maximum_peer"];
+		main_transaction_tran_rece->get_inactive_time() = config.get_json()["network"]["inactive_peer_second"];
+		for (auto &single_preferred_peer : preferred_peers)
+		{
+			main_transaction_tran_rece->add_preferred_peer(single_preferred_peer.get<std::string>());
+		}
+		main_transaction_tran_rece->set_receive_transaction_callback(receive_transaction);
+		
+		configuration_file::json introducers = config.get_json()["network"]["introducers"];
+		for (configuration_file::json& single_introducer_json : introducers)
+		{
+			main_transaction_tran_rece->add_introducer(single_introducer_json["address"].get<std::string>(),
+			                                           single_introducer_json["ip"].get<std::string>(),
+			                                           single_introducer_json["public_key"].get<std::string>(),
+			                                           single_introducer_json["port"].get<uint16_t>());
+		}
+		
 	}
-	main_transaction_tran_rece->set_receive_transaction_callback(receive_transaction);
 	
 	//perform reputation test
 	Ml::caffe_parameter_net<model_datatype> model = model_train->get_parameter();

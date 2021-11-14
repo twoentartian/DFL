@@ -26,7 +26,7 @@ int main(int argc, char **argv)
 	//load configuration
 	configuration_file config;
 	config.SetDefaultConfiguration(get_default_introducer_configuration());
-	auto ret_code = config.LoadConfiguration("./config.json");
+	auto ret_code = config.LoadConfiguration("./introducer_config.json");
 	if(ret_code < configuration_file::NoError)
 	{
 		if (ret_code == configuration_file::FileFormatError)
@@ -53,7 +53,11 @@ int main(int argc, char **argv)
 	introducer_server.reset(new introducer_p2p(blockchain_public_key, blockchain_private_key, blockchain_address));
 	introducer_server->start_listen(port);
 	introducer_server->add_new_peer_callback([](const peer_endpoint& peer){
-		std::cout << "new peer: " << peer.name << " - " << peer.address << ":" << peer.port << std::endl;
+		std::stringstream info_ss;
+		info_ss << "add peer " << peer.name << " with endpoint " << peer.address <<":"<< peer.port;
+		dfl_util::print_info_to_log_stdcout(info_ss);
+		std::cout << ">> ";
+		std::cout.flush();
 	});
 	
 	while (true)

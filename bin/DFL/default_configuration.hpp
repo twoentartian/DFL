@@ -16,7 +16,7 @@ configuration_file::json get_default_configuration()
 	
 	output["ml_solver_proto_path"] = "../../../dataset/MNIST/lenet_solver_memory.prototxt";
 	output["ml_test_batch_size"] = 100;
-	output["ml_model_stream_type"] = "compressed";  //compressed or normal
+	output["ml_model_stream_type"] = "normal";  //compressed or normal
 	output["ml_model_stream_compressed_filter_limit"] = 0.5;
 	
 	output["data_storage_service_port"] = 8040;
@@ -25,11 +25,20 @@ configuration_file::json get_default_configuration()
 	output["data_storage_trigger_training_size"] = 64; // must be equal to the batch size of the model
 	
 	output["network"]["port"] = 8000;
-	std::string item0 = {"name"};
-	std::string item1 = {"name"};
+	std::string item0 = {"address"};
+	std::string item1 = {"address"};
 	std::vector<configuration_file::json> peers = {item0, item1};
-	output["network"]["peers"] = peers;
+	output["network"]["preferred_peers"] = peers;
 	output["network"]["maximum_peer"] = 10;
+	output["network"]["use_preferred_peers_only"] = false;
+	output["network"]["inactive_peer_second"] = 60;
+	
+	configuration_file::json introducer;
+	introducer["ip"] = "127.0.0.1";
+	introducer["port"] = 5666;
+	introducer["address"] = "94c4ccdec72c2955f46fc1e1de9d5db0a6a4664f5085cd90149d392cc3fef803";
+	introducer["public_key"] = "0712335841163e55f1540189fd9ec800343b34877ff72d0646f5c3e5fd2f990846df32dc4617a4efceffe46329e3f48b0078a6e1ddc5a69c51bf2dbe4242bcba25";
+	output["network"]["introducers"] = {introducer};
 	
 	output["transaction_count_per_model_update"] = 10;
 	output["transaction_db_path"] = "./transaction_db";
