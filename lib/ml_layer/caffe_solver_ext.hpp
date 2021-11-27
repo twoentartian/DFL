@@ -62,7 +62,7 @@ namespace Ml
 			
 			if (data.size() % batch_size != 0)
 			{
-				LOG(WARNING) << "data size is not a multiple of batch size";
+				LOG(ERROR) << "train data size is not a multiple of train batch size";
 			}
 			
 			int current_train_index = 0;
@@ -122,13 +122,25 @@ namespace Ml
 			{
 				auto first_layer_abs = test_nets[test_nets_index]->layers()[0];
 				auto first_layer = boost::dynamic_pointer_cast<caffe::MemoryDataLayer<DType>>(first_layer_abs);
+				auto batch_size = first_layer->batch_size();
 				
-				//test batch size will not work, we will test all test data.
-				//auto batch_size = first_layer->batch_size();
+				if (data.size() % batch_size != 0)
+				{
+					LOG(ERROR) << "test data size is not a multiple of test batch size";
+				}
 				
 				auto datums = ConvertTensorBlobLikeToDatum(data,label);
 				first_layer->AddDatumVector(datums);
-				output.push_back(TestDataset_SingleNet(test_nets_index));
+				DType accuracy_sum = 0, loss_sum = 0;
+				size_t counter = 0;
+				for (int i = 0; i < data.size() / batch_size; ++i)
+				{
+					auto [accuracy,loss] = TestDataset_SingleNet(test_nets_index);
+					accuracy_sum += accuracy;
+					loss_sum += loss;
+					counter++;
+				}
+				output.push_back({accuracy_sum/counter, loss_sum/counter});
 			}
 			return output;
 		}
@@ -153,12 +165,23 @@ namespace Ml
 			{
 				auto first_layer_abs = test_nets[test_nets_index]->layers()[0];
 				auto first_layer = boost::dynamic_pointer_cast<caffe::MemoryDataLayer<DType>>(first_layer_abs);
+				auto batch_size = first_layer->batch_size();
 				
-				//test batch size will not work, we will test all test data.
-				//auto batch_size = first_layer->batch_size();
 				auto datums = ConvertTensorBlobLikeToDatum(data);
 				first_layer->AddDatumVector(datums);
-				output.push_back(PredictDataset_SingleNet(test_nets_index));
+				
+				std::vector<tensor_blob_like<DType>> all_predictions;
+				all_predictions.reserve(data.size());
+				size_t counter = 0;
+				for (int i = 0; i < data.size() / batch_size; ++i)
+				{
+					std::vector<tensor_blob_like<DType>> predictions = PredictDataset_SingleNet(test_nets_index);
+					for (auto& single_predict : predictions)
+					{
+						all_predictions.push_back(single_predict);
+					}
+				}
+				output.push_back(all_predictions);
 			}
 			return output;
 		}

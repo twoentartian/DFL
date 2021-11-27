@@ -125,7 +125,12 @@ namespace Ml
 			return output_accuracy / results.size();
 		}
 		
-		
+		std::vector<tensor_blob_like<DType>> predict(const std::vector<tensor_blob_like<DType>>& data) override
+		{
+			std::lock_guard guard(_model_lock);
+			std::vector<std::vector<tensor_blob_like<DType>>> results = _caffe_solver->PredictDataset(data);
+			return results[0];
+		}
 		
 		std::string get_network_structure_info() override
 		{

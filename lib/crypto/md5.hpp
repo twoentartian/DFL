@@ -265,7 +265,7 @@ namespace crypto
 	        return digest_s(reinterpret_cast<const uint8_t*>(message.data()), message.size());
         }
 	
-	    hex_data digest(const uint8_t* data, size_t size)
+	    hex_data digest(const uint8_t* data, size_t size) override
 	    {
 		    init();
 		    update(data, size);

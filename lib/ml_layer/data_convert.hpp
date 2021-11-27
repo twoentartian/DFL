@@ -170,7 +170,12 @@ namespace Ml{
 		    }
 		    return _get_random_data(size, data_pool, label_pool);
 	    }
-        
+	
+	    std::tuple<const std::vector<tensor_blob_like<DType>>&, const std::vector<tensor_blob_like<DType>>& > get_whole_dataset()
+	    {
+		    return {_data, _label};
+	    }
+	    
     private:
         std::vector<tensor_blob_like<DType>> _data;
         std::vector<tensor_blob_like<DType>> _label;

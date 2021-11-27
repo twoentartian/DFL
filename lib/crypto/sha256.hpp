@@ -166,7 +166,7 @@ namespace crypto
 	        return digest_s((uint8_t*)message.data(), message.size());
         }
 		
-		hex_data digest(const uint8_t* data, size_t size)
+		hex_data digest(const uint8_t* data, size_t size) override
 		{
 			uint8_t digest[DIGEST_SIZE];
 			memset(digest,0,DIGEST_SIZE);

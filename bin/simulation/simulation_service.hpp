@@ -265,14 +265,14 @@ public:
 		return {record_service_status::success, ""};
 	}
 	
-	std::tuple<record_service_status, std::string> init_service(const std::filesystem::path& output_path, std::unordered_map<std::string, node<model_datatype> *>& _node_container, std::vector<node<model_datatype>*>& _node_vector_container)
+	std::tuple<record_service_status, std::string> init_service(const std::filesystem::path& output_path, std::unordered_map<std::string, node<model_datatype> *>& _node_container, std::vector<node<model_datatype>*>& _node_vector_container) override
 	{
 		this->set_node_container(_node_container, _node_vector_container);
 		
 		return {record_service_status::success, ""};
 	}
 	
-	std::tuple<record_service_status, std::string> process_per_tick(int tick)
+	std::tuple<record_service_status, std::string> process_per_tick(int tick) override
 	{
 		if (this->enable == false) return {record_service_status::skipped, "not enabled"};
 		
@@ -295,7 +295,7 @@ public:
 		return {record_service_status::success, ""};
 	}
 	
-	std::tuple<record_service_status, std::string> destruction_service()
+	std::tuple<record_service_status, std::string> destruction_service() override
 	{
 		return {record_service_status::success, ""};
 	}
@@ -332,6 +332,9 @@ public:
 		least_peer_change_interval = 0;
 		accuracy_threshold_high = 0.0f;
 		accuracy_threshold_low = 0.0f;
+		
+		size_t solver_for_testing_size = std::thread::hardware_concurrency();
+		solver_for_testing = new Ml::MlCaffeModel<float, caffe::SGDSolver>[solver_for_testing_size];
 	}
 	
 	std::tuple<record_service_status, std::string> apply_config(const configuration_file::json& config) override
@@ -350,7 +353,7 @@ public:
 		return {record_service_status::success, ""};
 	}
 	
-	std::tuple<record_service_status, std::string> init_service(const std::filesystem::path& output_path, std::unordered_map<std::string, node<model_datatype> *>& _node_container, std::vector<node<model_datatype>*>& _node_vector_container)
+	std::tuple<record_service_status, std::string> init_service(const std::filesystem::path& output_path, std::unordered_map<std::string, node<model_datatype> *>& _node_container, std::vector<node<model_datatype>*>& _node_vector_container) override
 	{
 		this->set_node_container(_node_container, _node_vector_container);
 		
@@ -368,7 +371,6 @@ public:
 			
 			//solver for testing
 			size_t solver_for_testing_size = std::thread::hardware_concurrency();
-			solver_for_testing = new Ml::MlCaffeModel<float, caffe::SGDSolver>[solver_for_testing_size];
 			for (int i = 0; i < solver_for_testing_size; ++i)
 			{
 				solver_for_testing[i].load_caffe_model(ml_solver_proto);
@@ -380,7 +382,7 @@ public:
 		return {record_service_status::success, ""};
 	}
 	
-	std::tuple<record_service_status, std::string> process_per_tick(int tick)
+	std::tuple<record_service_status, std::string> process_per_tick(int tick) override
 	{
 		if (this->enable == false) return {record_service_status::skipped, "not enabled"};
 		
@@ -467,11 +469,13 @@ public:
 		return {record_service_status::success, ""};
 	}
 	
-	std::tuple<record_service_status, std::string> destruction_service()
+	std::tuple<record_service_status, std::string> destruction_service() override
 	{
-		peer_change_file->flush();
-		peer_change_file->close();
-		
+		if (peer_change_file && peer_change_file->is_open())
+		{
+			peer_change_file->flush();
+			peer_change_file->close();
+		}
 		delete[] solver_for_testing;
 		
 		return {record_service_status::success, ""};

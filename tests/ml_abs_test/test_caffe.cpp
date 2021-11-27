@@ -275,9 +275,9 @@ BOOST_AUTO_TEST_CASE (caffe_ext_predict)
 	
 	for (int repeat = 0; repeat < 50; ++repeat)
 	{
-		auto [train_x, train_y] = dataset.get_random_data(64);
+		auto [train_x, train_y] = dataset.get_random_data(128);
 		model1.TrainDataset(train_x, train_y);
-		auto [test_x, test_y] = dataset.get_random_data(100);
+		auto [test_x, test_y] = dataset.get_random_data(200);
 		auto results = model1.TestDataset(test_x, test_y);
 		for (auto&& result : results)
 		{
@@ -286,7 +286,7 @@ BOOST_AUTO_TEST_CASE (caffe_ext_predict)
 		}
 	}
 	
-	auto [test_x, test_y] = dataset.get_random_data(100);
+	auto [test_x, test_y] = dataset.get_random_data(1000);
 	std::vector<std::vector<Ml::tensor_blob_like<float>>> result = model1.PredictDataset(test_x);
 	std::vector<Ml::tensor_blob_like<float>> predict_labels;
 	predict_labels.reserve(test_y.size());
@@ -309,7 +309,7 @@ BOOST_AUTO_TEST_CASE (caffe_ext_predict)
 		label.getData() = {float(max_prob_label)};
 		predict_labels.push_back(label);
 	}
-	
+
 	int correct_count = 0;
 	int all_count = 0;
 	for (int i = 0; i < predict_labels.size(); ++i)
