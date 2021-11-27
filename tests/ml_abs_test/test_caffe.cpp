@@ -14,14 +14,17 @@
 #include <ml_layer/caffe.hpp>
 #include <ml_layer/tensor_blob_like.hpp>
 #include <ml_layer/fed_avg_buffer.hpp>
+#include <ml_layer/data_convert.hpp>
 
 BOOST_AUTO_TEST_SUITE (ml_caffe_test)
 
 BOOST_AUTO_TEST_CASE (structure_same_test)
 {
 	Ml::MlCaffeModel<float,caffe::SGDSolver> model1;
-	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver.prototxt");
-	Ml::MlCaffeModel<float,caffe::SGDSolver> model2 = model1;
+	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver_memory.prototxt");
+	Ml::MlCaffeModel<float,caffe::SGDSolver> model2;
+	model2.load_caffe_model("../../../dataset/MNIST/lenet_solver_memory.prototxt");
+	model2.set_parameter(model1.get_parameter());
 	
 	
 	Ml::caffe_parameter_net<float> net1 = model1.get_parameter();
@@ -43,8 +46,10 @@ BOOST_AUTO_TEST_CASE (structure_same_test)
 BOOST_AUTO_TEST_CASE (get_model_parameter)
 {
 	Ml::MlCaffeModel<float,caffe::SGDSolver> model1;
-	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver.prototxt");
-	Ml::MlCaffeModel<float,caffe::SGDSolver> model2 = model1;
+	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver_memory.prototxt");
+	Ml::MlCaffeModel<float,caffe::SGDSolver> model2;
+	model2.load_caffe_model("../../../dataset/MNIST/lenet_solver_memory.prototxt");
+	model2.set_parameter(model1.get_parameter());
 	Ml::caffe_parameter_net<float> parameter1 = model1.get_parameter();
 	for (int i = 0; i < parameter1.getLayers().size(); ++i)
 	{
@@ -70,9 +75,9 @@ BOOST_AUTO_TEST_CASE (get_model_parameter)
 BOOST_AUTO_TEST_CASE (serialization)
 {
 	Ml::MlCaffeModel<float, caffe::SGDSolver> model1;
-	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver.prototxt");
+	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver_memory.prototxt");
 	Ml::MlCaffeModel<float, caffe::SGDSolver> model2;
-	model2.load_caffe_model("../../../dataset/MNIST/lenet_solver.prototxt");
+	model2.load_caffe_model("../../../dataset/MNIST/lenet_solver_memory.prototxt");
 	
 	Ml::caffe_parameter_net<float> parameter1 = model1.get_parameter();
 	for (int i = 0; i < parameter1.getLayers().size(); ++i)
@@ -102,7 +107,7 @@ BOOST_AUTO_TEST_CASE (serialization)
 BOOST_AUTO_TEST_CASE (net_parameter_add_divide)
 {
 	Ml::MlCaffeModel<float, caffe::SGDSolver> model1;
-	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver.prototxt");
+	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver_memory.prototxt");
 	Ml::caffe_parameter_net<float> parameter = model1.get_parameter();
 	auto parameterx2 = parameter + parameter;
 	auto parameterx3 = parameter + parameterx2;
@@ -118,10 +123,10 @@ BOOST_AUTO_TEST_CASE (net_parameter_add_divide)
 BOOST_AUTO_TEST_CASE (fed_avg_buffer)
 {
 	Ml::MlCaffeModel<float, caffe::SGDSolver> model1;
-	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver.prototxt");
+	model1.load_caffe_model("../../../dataset/MNIST/lenet_solver_memory.prototxt");
 	Ml::caffe_parameter_net<float> parameter = model1.get_parameter();
 	
-	Ml::fed_avg_buffer<Ml::caffe_parameter_net<float>, 6> parameter_buffer;
+	Ml::fed_avg_buffer<Ml::caffe_parameter_net<float>> parameter_buffer(6);
 	parameter_buffer.add(parameter);
 	parameter_buffer.add(parameter);
 	auto parameter0 = parameter_buffer.average();
@@ -253,6 +258,69 @@ BOOST_AUTO_TEST_CASE (caffe_ext_dtype)
 		}
 	}
 
+}
+
+BOOST_AUTO_TEST_CASE (caffe_ext_predict)
+{
+	Ml::caffe_solver_ext<float, caffe::SGDSolver> model1("../../../dataset/MNIST/lenet_solver_memory.prototxt");
+	BOOST_CHECK(model1.checkValidFirstLayer_memoryLayer());
+	
+	const std::string train_x_path = "../../../dataset/MNIST/train-images.idx3-ubyte";
+	const std::string train_y_path = "../../../dataset/MNIST/train-labels.idx1-ubyte";
+	
+	LOG(INFO) << "loading dataset";
+	Ml::data_converter<float> dataset;
+	dataset.load_dataset_mnist(train_x_path, train_y_path);
+	LOG(INFO) << "loading dataset - done";
+	
+	for (int repeat = 0; repeat < 50; ++repeat)
+	{
+		auto [train_x, train_y] = dataset.get_random_data(64);
+		model1.TrainDataset(train_x, train_y);
+		auto [test_x, test_y] = dataset.get_random_data(100);
+		auto results = model1.TestDataset(test_x, test_y);
+		for (auto&& result : results)
+		{
+			auto& [accuracy,loss] = result;
+			std::cout << "accuracy:" << accuracy << "    loss:" << loss << std::endl;
+		}
+	}
+	
+	auto [test_x, test_y] = dataset.get_random_data(100);
+	std::vector<std::vector<Ml::tensor_blob_like<float>>> result = model1.PredictDataset(test_x);
+	std::vector<Ml::tensor_blob_like<float>> predict_labels;
+	predict_labels.reserve(test_y.size());
+	for (int i = 0; i < result[0].size(); ++i)
+	{
+		float max_prob = 0;
+		int max_prob_label = 0;
+		for (int label_index = 0; label_index < result[0][i].size(); ++label_index)
+		{
+			Ml::tensor_blob_like<float>& tensorBlobLike = result[0][i];
+			float value = tensorBlobLike.getData()[label_index];
+			if (value > max_prob)
+			{
+				max_prob = value;
+				max_prob_label = label_index;
+			}
+		}
+		Ml::tensor_blob_like<float> label;
+		label.getShape() = {1};
+		label.getData() = {float(max_prob_label)};
+		predict_labels.push_back(label);
+	}
+	
+	int correct_count = 0;
+	int all_count = 0;
+	for (int i = 0; i < predict_labels.size(); ++i)
+	{
+		if (predict_labels[i].roughly_equal(test_y[i], 0.1))
+		{
+			correct_count++;
+		}
+		all_count++;
+	}
+	std::cout << "predict accuracy: " << float (correct_count) / all_count << std::endl;
 }
 
 BOOST_AUTO_TEST_SUITE_END( )

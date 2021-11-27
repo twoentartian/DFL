@@ -125,6 +125,8 @@ namespace Ml
 			return output_accuracy / results.size();
 		}
 		
+		
+		
 		std::string get_network_structure_info() override
 		{
 			if (!_caffe_solver)
@@ -164,7 +166,13 @@ namespace Ml
 			return output;
 		}
 		
-		void set_parameter(caffe_parameter_net<DType>& parameter)
+		void set_parameter(const caffe_parameter_net<DType>& parameter)
+		{
+			std::lock_guard guard(_model_lock);
+			parameter.toNet(*getNet());
+		}
+		
+		void set_parameter(const caffe_parameter_net<DType>&& parameter)
 		{
 			std::lock_guard guard(_model_lock);
 			parameter.toNet(*getNet());

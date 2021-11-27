@@ -179,7 +179,7 @@ namespace Ml {
 	        }
 	        for (int i = 0; i < this->_data.size(); ++i)
 	        {
-		        if (diff_threshold > std::abs(this->_data[i] - target._data[i])) return false;
+		        if (diff_threshold < std::abs(this->_data[i] - target._data[i])) return false;
 	        }
 	        return true;
         }

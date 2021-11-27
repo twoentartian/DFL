@@ -162,6 +162,15 @@ layer {
   }
 }
 layer {
+  name:"prob"
+  type:"Softmax"
+  bottom: "ip2"
+  top: "prob"
+  include {
+    phase: TEST
+  }
+}
+layer {
   name: "loss"
   type: "SoftmaxWithLoss"
   bottom: "ip2"

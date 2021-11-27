@@ -133,6 +133,36 @@ namespace Ml
 			return output;
 		}
 		
+		std::vector<std::vector<tensor_blob_like<DType>>> PredictDataset(const std::vector<tensor_blob_like<DType>>& data)
+		{
+			CHECK(!data.empty()) << "empty test data, data size == 0";
+			{
+				int data_length = 1;
+				for (auto&& dimension: data[0].getShape())
+				{
+					data_length *= dimension;
+				}
+				CHECK(data_length == data[0].getData().size()) << "data shape and data size mismatch";
+			}
+			CHECK(checkValidFirstLayer_memoryLayer()) << "the first layer is not MemoryData layer";
+			std::vector<std::vector<tensor_blob_like<DType>>> output;
+			
+			const std::vector<boost::shared_ptr<caffe::Net<DType>>>& test_nets = this->test_nets();
+			output.reserve(test_nets.size());
+			for (int test_nets_index = 0; test_nets_index < test_nets.size(); test_nets_index++)
+			{
+				auto first_layer_abs = test_nets[test_nets_index]->layers()[0];
+				auto first_layer = boost::dynamic_pointer_cast<caffe::MemoryDataLayer<DType>>(first_layer_abs);
+				
+				//test batch size will not work, we will test all test data.
+				//auto batch_size = first_layer->batch_size();
+				auto datums = ConvertTensorBlobLikeToDatum(data);
+				first_layer->AddDatumVector(datums);
+				output.push_back(PredictDataset_SingleNet(test_nets_index));
+			}
+			return output;
+		}
+		
 		bool checkValidFirstLayer_memoryLayer()
 		{
 			auto& test_first_layer = this->test_nets().data()->get()->layers()[0];
@@ -200,12 +230,58 @@ namespace Ml
 			}
 		}
 		
+		std::vector<tensor_blob_like<DType>> PredictDataset_SingleNet(const int test_net_id)
+		{
+			CHECK(caffe::Caffe::root_solver());
+			LOG(INFO) << "Iteration " << this->iter_ << ", predicting net (#" << test_net_id << ")";
+			CHECK_NOTNULL(this->test_nets_[test_net_id].get())->ShareTrainedLayersWith(this->net_.get());
+			
+			std::vector<tensor_blob_like<DType>> output;
+			const boost::shared_ptr<caffe::Net<DType> >& test_net = this->test_nets_[test_net_id];
+			DType loss = 0;
+			for (int i = 0; i < 1; ++i)
+			{
+				DType iter_loss;
+				const std::vector<caffe::Blob<DType>*>& result = test_net->Forward(&iter_loss);
+				if (this->param_.test_compute_loss()) {
+					loss += iter_loss;
+				}
+				for (int j = 0; j < result.size(); ++j)
+				{
+					const int output_blob_index = test_net->output_blob_indices()[j];
+					const std::string& output_name = test_net->blob_names()[output_blob_index];
+					std::vector<int> shape = test_net->blobs()[output_blob_index]->shape();
+					if (output_name == "prob")
+					{
+						const DType* result_vec = result[j]->cpu_data();
+						tensor_blob_like<DType> buffer;
+						buffer.getShape() = {shape[1]};
+						auto& buffer_data = buffer.getData();
+						buffer_data.resize(buffer.getShape()[0]);
+						int buffer_loc_counter = 0;
+						for (int result_index = 0; result_index < result[j]->count(); ++result_index)
+						{
+							buffer_data[buffer_loc_counter] = result_vec[result_index];
+							buffer_loc_counter++;
+							if (buffer_loc_counter == shape[1])
+							{
+								output.push_back(buffer);
+								buffer_loc_counter = 0;
+							}
+						}
+					}
+				}
+			}
+			
+			return output;
+		}
+		
 		//return: {accuracy,loss}
 		std::tuple<DType,DType> TestDataset_SingleNet(const int test_net_id)
 		{
 			DType output_accuracy,output_loss;
 			CHECK(caffe::Caffe::root_solver());
-			LOG(INFO) << "Iteration " << this->iter_ << ", Testing net (#" << test_net_id << ")";
+			LOG(INFO) << "Iteration " << this->iter_ << ", testing net (#" << test_net_id << ")";
 			CHECK_NOTNULL(this->test_nets_[test_net_id].get())->ShareTrainedLayersWith(this->net_.get());
 			std::vector<DType> test_score;
 			std::vector<int> test_score_output_id;
@@ -215,7 +291,7 @@ namespace Ml
 			for (int i = 0; i < 1; ++i)
 			{
 				DType iter_loss;
-				const std::vector<caffe::Blob<DType>*>& result =	test_net->Forward(&iter_loss);
+				const std::vector<caffe::Blob<DType>*>& result = test_net->Forward(&iter_loss);
 				if (this->param_.test_compute_loss()) {
 					loss += iter_loss;
 				}
@@ -254,14 +330,8 @@ namespace Ml
 				const int output_blob_index = test_net->output_blob_indices()[test_score_output_id[i]];
 				const std::string& output_name = test_net->blob_names()[output_blob_index];
 				const DType loss_weight = test_net->blob_loss_weights()[output_blob_index];
-				std::ostringstream loss_msg_stream;
 				//const DType mean_score = test_score[i] / this->param_.test_iter(test_net_id);
 				const DType mean_score = test_score[i];
-				if (loss_weight)
-				{
-					loss_msg_stream << " (* " << loss_weight << " = " << loss_weight * mean_score << " loss)";
-				}
-				LOG(INFO) << "    Test net output #" << i << ": " << output_name << " = " << mean_score << loss_msg_stream.str();
 				
 				if (output_name == "accuracy")
 				{
@@ -270,6 +340,10 @@ namespace Ml
 				else if(output_name == "loss")
 				{
 					output_loss = mean_score;
+				}
+				else if (output_name == "prob")
+				{
+					//do nothing
 				}
 				else
 				{
@@ -301,6 +375,30 @@ namespace Ml
 				temp_label = rint(label[item_id].getData()[0]);
 				output[item_id].set_data(temp_pixels.data(), single_sample_length);
 				output[item_id].set_label(temp_label);
+			}
+			
+			return std::move(output);
+		}
+		
+		std::vector<caffe::Datum> ConvertTensorBlobLikeToDatum(const std::vector<tensor_blob_like<DType>>& data)
+		{
+			std::vector<caffe::Datum> output;
+			output.resize(data.size());
+			const auto& shape = data[0].getShape();
+			const int& single_sample_length = data[0].getData().size();
+			std::vector<char> temp_pixels;
+			temp_pixels.resize(single_sample_length);
+			for (int item_id = 0; item_id < data.size(); ++item_id)
+			{
+				output[item_id].set_channels(shape[0]);
+				output[item_id].set_height(shape[1]);
+				output[item_id].set_width(shape[2]);
+				
+				for(int i = 0; i < single_sample_length; i++)
+				{
+					temp_pixels[i] = rint(data[item_id].getData()[i]);
+				}
+				output[item_id].set_data(temp_pixels.data(), single_sample_length);
 			}
 			
 			return std::move(output);
