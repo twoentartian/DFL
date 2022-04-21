@@ -1,0 +1,37 @@
+{
+    "blockchain_address": "a49487e4550b9961af17161900c8496a4ddc0638979d3c4f9b305d2b4dc0c665",
+    "blockchain_block_db_path": "./blocks",
+    "blockchain_estimated_block_size": 10,
+    "blockchain_private_key": "e321c369d8b1ff39aeabadc7846735e4fe5178af41b87eb421a6773c8c4810c3",
+    "blockchain_public_key": "070a95eb6bd64eb273a2649a0ea61b932d50417275b8e250595c7a47468534a86fbd01f2f06efbd226ef86ab56abdd5cc296800794c9250c12c105fa3df86d3ad7",
+    "data_storage_db_path": "./dataset_db",
+    "data_storage_service_concurrency": 2,
+    "data_storage_service_port": 8040,
+    "data_storage_trigger_training_size": 64,
+    "enable_profiler": true,
+    "ml_model_stream_compressed_filter_limit": 0.5,
+    "ml_model_stream_type": "normal",
+    "ml_solver_proto_path": "../../../dataset/MNIST/lenet_solver_memory.prototxt",
+    "ml_test_batch_size": 100,
+    "network": {
+        "inactive_peer_second": 60,
+        "introducers": [
+            {
+                "address": "94c4ccdec72c2955f46fc1e1de9d5db0a6a4664f5085cd90149d392cc3fef803",
+                "ip": "127.0.0.1",
+                "port": 5666,
+                "public_key": "0712335841163e55f1540189fd9ec800343b34877ff72d0646f5c3e5fd2f990846df32dc4617a4efceffe46329e3f48b0078a6e1ddc5a69c51bf2dbe4242bcba25"
+            }
+        ],
+        "maximum_peer": 10,
+        "port": 8000,
+        "preferred_peers": [
+            "803869a738b5117e2daba24a95330999687b4a5ccede55ae85f36677a962c0c1"
+        ],
+        "use_preferred_peers_only": true
+    },
+    "reputation_dll_datatype": "float",
+    "reputation_dll_path": "../reputation_sdk/sample/libreputation_api_sample.so",
+    "transaction_count_per_model_update": 10,
+    "transaction_db_path": "./transaction_db"
+}
