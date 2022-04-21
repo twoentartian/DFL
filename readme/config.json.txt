@@ -1,20 +1,50 @@
 {
+    //the blockchain address of the node
     "blockchain_address": "a49487e4550b9961af17161900c8496a4ddc0638979d3c4f9b305d2b4dc0c665",
+    
+    //the path to store the blockchain database
     "blockchain_block_db_path": "./blocks",
+    
+    //trigger to generate a block when the transaction count reaches this value
     "blockchain_estimated_block_size": 10,
+    
+    //the private key of the node
     "blockchain_private_key": "e321c369d8b1ff39aeabadc7846735e4fe5178af41b87eb421a6773c8c4810c3",
+    
+    //the public key of the node
     "blockchain_public_key": "070a95eb6bd64eb273a2649a0ea61b932d50417275b8e250595c7a47468534a86fbd01f2f06efbd226ef86ab56abdd5cc296800794c9250c12c105fa3df86d3ad7",
+    
+    //the database path to store the dataset, notice that the data source comes from data injecctor via the port specified in "data_storage_service_port".
     "data_storage_db_path": "./dataset_db",
+    
+    //the threads for the data storage service
     "data_storage_service_concurrency": 2,
+    
+    //the port of the data storage
     "data_storage_service_port": 8040,
+    
+    //trigger training and generate a transaction when we receive 64 data sample
     "data_storage_trigger_training_size": 64,
+    
+    //enable performance profiler?
     "enable_profiler": true,
+    
+    //compress ratio of the model, model size becomes smaller with larger ratio. It doesn't take effect if the "ml_model_stream_type" is set to "normal".
     "ml_model_stream_compressed_filter_limit": 0.5,
+    
+    //"compressed" or "normal"
     "ml_model_stream_type": "normal",
+    
+    //the Caffe solver proto path
     "ml_solver_proto_path": "../../../dataset/MNIST/lenet_solver_memory.prototxt",
+    
+    //the batch size of testing
     "ml_test_batch_size": 100,
+    
+    //configurations for 
     "network": {
         "inactive_peer_second": 60,
+        //for DFL network with introducer only.
         "introducers": [
             {
                 "address": "94c4ccdec72c2955f46fc1e1de9d5db0a6a4664f5085cd90149d392cc3fef803",
@@ -23,15 +53,29 @@
                 "public_key": "0712335841163e55f1540189fd9ec800343b34877ff72d0646f5c3e5fd2f990846df32dc4617a4efceffe46329e3f48b0078a6e1ddc5a69c51bf2dbe4242bcba25"
             }
         ],
+        
+        //the maximum peers. The node won't request more peers from introducer when reaching.
         "maximum_peer": 10,
+        
+        //the port of this node
         "port": 8000,
+        
+        //preferred peers list, this value and "use_preferred_peers_only" are used for controlling the network topology.
         "preferred_peers": [
             "803869a738b5117e2daba24a95330999687b4a5ccede55ae85f36677a962c0c1"
         ],
         "use_preferred_peers_only": true
     },
+    
+    //the data type of the reputation dll.
     "reputation_dll_datatype": "float",
+    
+    //the path of reputation dll.
     "reputation_dll_path": "../reputation_sdk/sample/libreputation_api_sample.so",
+    
+    //trigger updating model when the node receives 10 transactions
     "transaction_count_per_model_update": 10,
+    
+    //the database path for temporal transaction storage.
     "transaction_db_path": "./transaction_db"
 }
