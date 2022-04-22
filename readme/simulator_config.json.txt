@@ -1,5 +1,5 @@
 {
-    //the label of machine learning output, this is used to generate non IID dataset.
+    //all possible labels in dataset, this is used to generate non IID dataset.
     "ml_dataset_all_possible_labels": [
         0,
         1,
