@@ -78,9 +78,9 @@ We provide a sample simulation output folder [here](https://github.com/twoentart
 
 
 
-### Reputation algorithm API:
+### Reputation algorithm SDK API:
 
-Please refer to this [link](https://github.com/twoentartian/DFL/tree/main/bin/reputation_sdk/sample).
+Please refer to this [link](https://github.com/twoentartian/DFL/tree/main/bin/reputation_sdk/sample) for sample reputation algorithm. The SDK API is not written yet.
 
 
 
