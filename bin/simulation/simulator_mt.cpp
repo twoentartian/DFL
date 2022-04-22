@@ -258,10 +258,10 @@ int main(int argc, char *argv[])
 	
 	//load network topology configuration
 	/** network topology configuration
-	 * you can use fully_connect, average_degree-{degree}, 1->2, 1<->2, the topology items' order in the configuration file determines the order of adding connections.
+	 * you can use fully_connect, average_degree-{degree}, 1->2, 1--2, the topology items' order in the configuration file determines the order of adding connections.
 	 * fully_connect: connect all nodes, and ignore all other topology items.
-	 * average_degree-: connect the network to reach the degree for all nodes. If there are previous added topology, average_degree will add more connection
-	 * 					to reach the degree and no duplicate connections.
+	 * average_degree-: connect the network to reach the degree for all nodes. If there are previous added topology, average_degree will add connections
+	 * 					until reaching the degree and no duplicate connections.
 	 * 1->2: add 2 as the peer of 1.
 	 * 1--2: add 2 as the peer of 1 and 1 as the peer of 2.
 	 */

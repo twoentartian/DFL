@@ -1,4 +1,5 @@
 {
+    //the label of machine learning output, this is used to generate non IID dataset.
     "ml_dataset_all_possible_labels": [
         0,
         1,
@@ -11,34 +12,99 @@
         8,
         9
     ],
+    
+    //set to true can accelerate the simulation but requires excessive memory.
     "ml_delayed_test_accuracy": false,
+    
+    //simulation stops at tick=2000
     "ml_max_tick": 2000,
+    
+    //the interval of record the weight difference
     "ml_model_weight_diff_record_interval_tick": 10,
+    
+    //the weight of non_iid_distribution will be randomly choosed from the range below if it's not specified in "non_iid_distribution".
     "ml_non_iid_normal_weight": [
         10.0,
         15.0
     ],
+    
+    //the reputation dll path
     "ml_reputation_dll_path": "./libreputation_HalfFedAvg.so",
+    
+    //Caffe solver path
     "ml_solver_proto": "../../../dataset/MNIST/lenet_solver_memory.prototxt",
+    
+    //Caffe test batch size
     "ml_test_batch_size": 100,
+    
+    //Caffe test dataset path
     "ml_test_dataset": "../../../dataset/MNIST/t10k-images.idx3-ubyte",
+    
+    //Caffe test label path
     "ml_test_dataset_label": "../../../dataset/MNIST/t10k-labels.idx1-ubyte",
+    
+    //Performing test on model every 10 ticks
     "ml_test_interval_tick": 10,
+    
+    //Caffe train batch size
     "ml_train_batch_size": 64,
+    
+    //Caffe train dataset path
     "ml_train_dataset": "../../../dataset/MNIST/train-images.idx3-ubyte",
+    
+    //Caffe train label path
     "ml_train_dataset_label": "../../../dataset/MNIST/train-labels.idx1-ubyte",
+    
+    //set the node topology, 
+	/** network topology configuration
+	 * you can use fully_connect, average_degree-{degree}, 1->2, 1--2, the topology items' order in the configuration file determines the order of adding connections.
+	 * fully_connect: connect all nodes, and ignore all other topology items.
+	 * average_degree-: connect the network to reach the degree for all nodes. If there are previous added topology, average_degree will add connections
+	 * 					until reaching the degree and no duplicate connections.
+	 * 1->2: add 2 as the peer of 1.
+	 * 1--2: add 2 as the peer of 1 and 1 as the peer of 2.
+	 */
     "node_topology": [
         "fully_connect"
     ],
+    
+    //configuration nodes
     "nodes": [
         {
+            //perform training when the node receives 10 batches of data samples.
             "buffer_size": 10,
+            
+            //default: randomly choose samples from dataset.
+            //iid: randomly choose samples from iid labels.
+            //non-iid: choose samples from non_iid labels, the label distribution is given in "non_iid_distribution".
             "dataset_mode": "iid",
+            
+            //compress ratio of the model, model size becomes smaller with larger ratio. It doesn't take effect if the "ml_model_stream_type" is set to "normal".
             "filter_limit": 0.5,
+            
+            //"compressed" or "normal"
             "model_generation_type": "normal",
+            
+            //node name
             "name": "0",
+            
+            //node type: 
+            //normal: perform training + update model from other transactions.
+            //observer: doesn't train model, only update the model from transactions.
+            //malicious_model_poisoning_random_model: send malicious model with random weights to other nodes.
+            //malicious_model_poisoning_random_model_by_turn: send malicious model with random weights to other nodes and send normal model to other nodes by turns.
+            //malicious_model_poisoning_random_model_biased_0_1: add the whole model weights for 0.1 and send it to other nodes.
+            //malicious_duplication_attack: duplicate the model and send the fake transaction to other nodes.
+            //malicious_data_poisoning_shuffle_label: shuffle the train dataset label.
+            //malicious_data_poisoning_shuffle_label_biased_1: add a constant bias 1 to the train dataset label.
+            //malicious_data_poisoning_random_data: use random data as train dataset.
             "node_type": "observer",
+            
+            //this configuration doesn't take effect if the "dataset_mode" is not "non-iid"
             "non_iid_distribution": {
+            
+                //higher value means it's more likely to get a data sample with label 0 during training.
+                //possibility = weight of current label / (sum of all weights)
                 "0": [
                     0.16277609765529633,
                     0.16277609765529633
@@ -80,6 +146,8 @@
                     117.93252563476563
                 ]
             },
+            
+            //perform next training after x ticks, x is randomly selected from below values. The size of data sample can be configured in "ml_train_batch_size".
             "training_interval_tick": [
                 8,
                 9,
@@ -317,16 +385,24 @@
             ]
         }
     ],
+    
+    //tell user the expected finishing time every 100 ticks.
     "report_time_remaining_per_tick_elapsed": 100,
+    
     "services": {
+        //measure accuracy every 20 ticks, the test sample size can be configured in "ml_test_batch_size".
         "accuracy": {
             "enable": true,
             "interval": 20
         },
+        
+        //Debug purpose only !, replace the model in each node with the average model of whole nodes.
         "force_broadcast_average": {
             "broadcast_interval": 100,
             "enable": false
         },
+        
+        //Debug purpose only !
         "peer_control_service": {
             "accuracy_threshold_high": 0.8,
             "accuracy_threshold_low": 0.2,
@@ -334,6 +410,8 @@
             "fedavg_buffer_size": "linear",
             "least_peer_change_interval": 50
         },
+        
+        //Debug purpose only !
         "weights_diff": {
             "enable": true,
             "interval": 20

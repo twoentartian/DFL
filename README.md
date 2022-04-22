@@ -47,7 +47,7 @@ Here are two tested toolchain configuration cases.
 
 	- [Keys generator](https://github.com/twoentartian/DFL/blob/main/bin/tool/generate_node_address.cpp): to generate private keys and public keys. These keys will be used in the configuration file.
 
-4. Compile your own "reputation algorithm", which will define the way of updating ML models and updating the other nodes' reputation. This implementation is critical for different dataset distribution, malicious ratio situations. We provide four sample "reputation algorithm" [here](https://github.com/twoentartian/DFL/tree/main/bin/reputation_sdk/sample). We will write a tutorial to explain the reputation implementation in the future(hopefully).
+4. Compile your own "reputation algorithm", which will define the way of updating ML models and updating the other nodes' reputation. This implementation is critical for different dataset distribution, malicious ratio situations. We provide four sample "reputation algorithm" [here](https://github.com/twoentartian/DFL/tree/main/bin/reputation_sdk/sample). 
 
 5. Run DFL executable, it should provide a sample configuration file for you.
 
@@ -75,6 +75,12 @@ Here are two tested toolchain configuration cases.
 5. The simulator will automatically crate an output folder, whose name is the current time, in the executable path. The configuration file and reputation dll will also be copied to the output folder for easily reproduce the output.
 
 We provide a sample simulation output folder [here](https://github.com/twoentartian/DFL/tree/main/readme/sample_simulation_result), you can reuse the [reputation dll](https://github.com/twoentartian/DFL/blob/main/readme/sample_simulation_result/libreputation_HalfFedAvg.so)  and the [configuration](https://github.com/twoentartian/DFL/blob/main/readme/sample_simulation_result/simulator_config.json). This configuration contains 5 nodes(1 observer) and all of them use IID dataset. Please note that this configuration uses HalfFedAvg(the output model = 50% previous model + 50% FedAvg output) because there is no malicious node.
+
+
+
+### Reputation algorithm API:
+
+Please refer to this [link](https://github.com/twoentartian/DFL/tree/main/bin/reputation_sdk/sample).
 
 
 
