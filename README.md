@@ -87,3 +87,7 @@ Please refer to this [link](https://github.com/twoentartian/DFL/tree/main/bin/re
 ### Future work:
 
 - Large scale DFL deployment (50+ nodes) tool is on its way (50%). Introducer is under testing.
+
+
+### For more details
+https://arxiv.org/pdf/2110.15457.pdf
