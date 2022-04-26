@@ -35,11 +35,12 @@ Here are two tested toolchain configuration cases.
 
 1. Install CMake and GCC with C++17 support.
 2. You can install above dependencies by executing the shell scripts in [shell folder](https://github.com/twoentartian/DFL/tree/main/shell). For most cases, you should execute these scripts with this order:
-	- [install_boost.sh](https://github.com/twoentartian/DFL/blob/main/shell/install_boost.sh)
-	- [install_json.sh](https://github.com/twoentartian/DFL/blob/main/shell/install_json.sh)
-	- [install_miscellaneous.sh](https://github.com/twoentartian/DFL/blob/main/shell/install_miscellaneous.sh)
-	- [install_caffe.sh](https://github.com/twoentartian/DFL/blob/main/shell/install_caffe.sh)
-	- [patch_caffe.sh]()
+    - [install_boost.sh](https://github.com/twoentartian/DFL/blob/main/shell/install_boost.sh)
+    - [install_json.sh](https://github.com/twoentartian/DFL/blob/main/shell/install_json.sh)
+    - [install_miscellaneous.sh](https://github.com/twoentartian/DFL/blob/main/shell/install_miscellaneous.sh)
+    - [install_caffe.sh](https://github.com/twoentartian/DFL/blob/main/shell/install_caffe.sh)
+    - [patch_caffe.sh]()
+   
 	If you are going to depoly DFL to Jetson Nano, you must execute two additional scripts:
 	-   [rename_hdf5lib_for_aarch.sh](https://github.com/twoentartian/DFL/blob/main/shell/rename_hdf5lib_for_aarch.sh)
 	-   [caffe_support_cudnn8.sh](https://github.com/twoentartian/DFL/blob/main/shell/caffe_support_cudnn8.sh)
