@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_set>
+
 #include <network.hpp>
 #include <mutex>
 #include <glog/logging.h>
