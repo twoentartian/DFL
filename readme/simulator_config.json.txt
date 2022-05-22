@@ -91,13 +91,13 @@
             //node type: 
             //normal: perform training + update model from other transactions.
             //observer: doesn't train model, only update the model from transactions.
-            //malicious_model_poisoning_random_model: send malicious model with random weights to other nodes.
+            //malicious_model_poisoning_random_model: send malicious model with random weights to other nodes. random model = each weights * (uniform distribution among 0.7~1.3)
             //malicious_model_poisoning_random_model_by_turn: send malicious model with random weights to other nodes and send normal model to other nodes by turns.
-            //malicious_model_poisoning_random_model_biased_0_1: add the whole model weights for 0.1 and send it to other nodes.
+            //malicious_model_poisoning_random_model_biased_0_1: add the whole model weights for (uniform distribution among 0~0.1) and send it to other nodes.
             //malicious_duplication_attack: duplicate the model and send the fake transaction to other nodes.
             //malicious_data_poisoning_shuffle_label: shuffle the train dataset label.
             //malicious_data_poisoning_shuffle_label_biased_1: add a constant bias 1 to the train dataset label.
-            //malicious_data_poisoning_random_data: use random data as train dataset.
+            //malicious_data_poisoning_random_data: use random data as train dataset. random data = input tensor => uniform distribution among (0~1)
             "node_type": "observer",
             
             //this configuration doesn't take effect if the "dataset_mode" is not "non-iid"
