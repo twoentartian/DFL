@@ -248,6 +248,23 @@ namespace Ml {
 	    {
 		    return _data.size();
 	    }
+	
+	    void regulate_weights(DType min, DType max)
+	    {
+		    for (auto& value: _data)
+		    {
+			    if (value < min) value = min;
+			    if (value > max) value = max;
+		    }
+		}
+		
+		void fix_nan()
+		{
+			for (auto& value: _data)
+			{
+				if (isnan(value)) value = 0;
+			}
+		}
      
     private:
         friend class boost::serialization::access;

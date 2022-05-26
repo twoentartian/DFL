@@ -191,6 +191,18 @@ namespace Ml
 		    if (!_blob_p) return;
 		    _blob_p->patch_weight(*patch._blob_p, ignore);
 	    }
+	
+	    void regulate_weights(DType min, DType max)
+	    {
+		    if (!_blob_p) return;
+		    _blob_p->regulate_weights(min, max);
+		}
+	
+	    void fix_nan()
+	    {
+		    if (!_blob_p) return;
+		    _blob_p->fix_nan();
+		}
         
     private:
         friend class boost::serialization::access;
@@ -385,6 +397,22 @@ namespace Ml
 			    _layers[i].patch_weight(patch._layers[i], ignore);
 		    }
 	    }
+		
+		void regulate_weights(DType min, DType max)
+		{
+			for (int i = 0; i < this->_layers.size(); ++i)
+			{
+				this->_layers[i].regulate_weights(min, max);
+			}
+		}
+		
+		void fix_nan()
+		{
+			for (int i = 0; i < this->_layers.size(); ++i)
+			{
+				this->_layers[i].fix_nan();
+			}
+		}
 
         GENERATE_GET(_name, getName);
         GENERATE_GET(_layers, getLayers);

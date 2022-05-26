@@ -231,9 +231,13 @@ public:
 	std::optional<Ml::caffe_parameter_net<model_datatype>> generate_model_sent() override
 	{
 		Ml::caffe_parameter_net<model_datatype> output = this->solver->get_parameter();
-		auto factor = output;
-		factor.random(0.7,1.3);
-		output = output.dot_product(factor);
+		
+//		auto factor = output;
+//		factor.random(0.7,1);
+//		output = output.dot_product(factor);
+		
+		output.random(0,0.001);
+
 		return {output};
 	}
 };
@@ -284,9 +288,10 @@ public:
 		else
 		{
 			output = this->solver->get_parameter();
-			auto factor = output;
-			factor.random(0.7,1.3);
-			output = output.dot_product(factor);
+//			auto factor = output;
+//			factor.random(0.7,1);
+//			output = output.dot_product(factor);
+			output.random(0,0.001);
 		}
 		turn = (turn + 1) % 2;
 		return {output};
@@ -328,7 +333,9 @@ public:
 		Ml::caffe_parameter_net<model_datatype> output = this->solver->get_parameter();
 		auto factor = output;
 		factor.random(0, 0.1);
-		output = output + factor;
+		output = output - factor;
+		//output.fix_nan();
+		
 		return {output};
 	}
 };

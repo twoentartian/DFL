@@ -25,7 +25,7 @@ configuration_file::json get_default_simulation_configuration()
 	configuration_file::json malicious_node;
 	malicious_node["malicious_random_strategy"] = 1;
 	malicious_node["malicious_strategy_1"] = 1;
-	output["malicious_node"] = malicious_node;
+	output["special_node"] = malicious_node;
 	return output;
 }
 
@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
 	float filter_limit = *my_config.get<float>("filter_limit");
 	int node_peer_connection_count = *my_config.get<int>("node_peer_connection_count");
 	std::string node_peer_connection_type = *my_config.get<std::string>("node_peer_connection_type");
-	auto malicious_map = my_config_json["malicious_node"];
+	auto special_node = my_config_json["special_node"];
 	std::cout << "node_count: " << node_count << std::endl;
 	std::cout << "buffer_size: " << buffer_size << std::endl;
 	std::cout << "dataset_mode: " << dataset_mode << std::endl;
@@ -118,13 +118,13 @@ int main(int argc, char* argv[])
 		
 		//add malicious nodes
 		int node_index = 0;
-		for (auto& [malicious_type, count] : malicious_map.items())
+		for (auto& [node_type, count] : special_node.items())
 		{
 			int node_index_per_type = 0;
 			while (node_index_per_type < count)
 			{
-				nodes_json[node_index]["node_type"] = malicious_type;
-				std::cout << "set node " << node_index << " to malicious: " << malicious_type << std::endl;
+				nodes_json[node_index]["node_type"] = node_type;
+				std::cout << "set node " << node_index << " to special: " << node_type << std::endl;
 				node_index_per_type++;
 				node_index++;
 			}
