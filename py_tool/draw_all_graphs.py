@@ -29,6 +29,7 @@ for folder_index in range(len(folders)):
     assert not (folder in folder_names_set)
     folder_names_set.add(folder)
 
+
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
 
