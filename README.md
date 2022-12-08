@@ -1,3 +1,5 @@
+# This project has been moved to [DFL2](https://github.com/twoentartian/DFL2)
+
 # DFL
 
 ## What is DFL?
